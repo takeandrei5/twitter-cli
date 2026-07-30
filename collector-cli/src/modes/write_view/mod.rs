@@ -74,6 +74,6 @@ impl View for WriteView {
     fn on_state_change(&mut self, app_state: &AppState) {
         self.elements
             .iter_mut()
-            .for_each(|x| x.on_state_change(app_state));
+            .for_each(|x| x.handle_state_change(app_state));
     }
 }

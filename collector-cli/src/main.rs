@@ -30,6 +30,7 @@ fn app(terminal: &mut DefaultTerminal) -> Result<(), Error> {
     let mut app_state = AppState::new(tweet_count);
     let mut read_view = ReadView::new();
     let mut write_view = WriteView::new();
+
     loop {
         terminal.try_draw(|frame| {
             match render(frame, &app_state, &mut read_view, &mut write_view) {

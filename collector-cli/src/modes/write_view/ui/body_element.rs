@@ -46,7 +46,7 @@ impl BodyElement {
 }
 
 impl BaseElement for BodyElement {
-    fn on_state_change(&mut self, app_state: &AppState) {
+    fn handle_state_change(&mut self, app_state: &AppState) {
         if app_state.mode == Mode::Write {
             self.input.reset();
         }
@@ -54,10 +54,10 @@ impl BaseElement for BodyElement {
 
     fn handle_key_event(&mut self, key: KeyEvent, event: &Event, _app_state: &AppState) {
         match (key.modifiers, key.code) {
-            (KeyModifiers::CONTROL, KeyCode::Char('e')) => {
+            (KeyModifiers::CONTROL, KeyCode::Char('j')) => {
                 self.move_scroll_down();
             }
-            (KeyModifiers::CONTROL, KeyCode::Char('j')) => {
+            (KeyModifiers::CONTROL, KeyCode::Char('k')) => {
                 self.move_scroll_up();
             }
             (KeyModifiers::CONTROL, KeyCode::Enter) => {
@@ -87,7 +87,7 @@ impl BaseElement for BodyElement {
             .fg(TEXT_DIM)
             .border_type(BorderType::Rounded)
             .title(format!(
-                "↩ replying to {} · {}",
+                "↩ replying to {} · posted at {}",
                 tweet.handle,
                 tweet.time.format("%Y-%m-%d %H:%M")
             ));

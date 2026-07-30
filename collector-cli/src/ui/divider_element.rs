@@ -1,9 +1,11 @@
+use std::sync::LazyLock;
+
 use ratatui::{
     Frame,
     layout::Rect,
     style::{Style, Stylize},
     text::Text,
-    widgets::Block,
+    widgets::{Block, Widget},
 };
 
 use crate::{
@@ -11,6 +13,14 @@ use crate::{
     ui::BaseElement,
     utils::{ApplicationError, BLUE, TEXT_MUTE},
 };
+
+const LATEST_TEXT: &str = " ▸ Latest tweets";
+static DIVIDER_WIDGET: LazyLock<Text<'_>> = LazyLock::new(|| {
+    Text::from(LATEST_TEXT)
+        .style(Style::new())
+        .fg(TEXT_MUTE)
+        .bg(BLUE)
+});
 
 pub struct DividerElement {
     _private: (),
@@ -29,13 +39,7 @@ impl BaseElement for DividerElement {
         area: Rect,
         _app_state: &AppState,
     ) -> Result<(), ApplicationError> {
-        frame.render_widget(Block::new().style(Style::default()).bg(BLUE), area);
-        frame.render_widget(
-            Text::from(" ▸ Latest tweets")
-                .style(Style::new())
-                .fg(TEXT_MUTE),
-            area,
-        );
+        frame.render_widget(&*DIVIDER_WIDGET, area);
 
         Ok(())
     }

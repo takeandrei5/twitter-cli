@@ -20,11 +20,10 @@ const SHORTCUTS_READ_MODE: [(&str, &str); 5] = [
     ("q", "quit"),
 ];
 
-const SHORTCUTS_WRITE_MODE: [(&str, &str); 4] = [
+const SHORTCUTS_WRITE_MODE: [(&str, &str); 3] = [
     ("Ctrl+Enter", "send"),
     ("Ctrl+W", "cancel"),
-    ("Ctrl+D", "discard"),
-    ("CTRL+E/J", "reply scroll"),
+    ("CTRL+J/K", "reply scroll"),
 ];
 
 pub struct BottomBarElement {

@@ -69,8 +69,8 @@ impl BaseElement for BodyElement {
     ) -> Result<(), ApplicationError> {
         let widgets: Vec<TweetWidget> = self
             .tweets
-            .clone()
-            .into_iter()
+            .iter()
+            .cloned()
             .map(|f| TweetWidget::new(f, TweetState::Normal))
             .collect();
 

@@ -13,5 +13,5 @@ pub trait BaseElement {
 
     fn handle_key_event(&mut self, _key: KeyEvent, _event: &Event, _app_state: &AppState) {}
 
-    fn on_state_change(&mut self, _app_state: &AppState) {}
+    fn handle_state_change(&mut self, _app_state: &AppState) {}
 }

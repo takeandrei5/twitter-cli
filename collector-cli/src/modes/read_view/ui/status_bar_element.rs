@@ -18,12 +18,6 @@ struct StatusText {
     background_color: Color,
 }
 
-const STATUS_TEXT: StatusText = StatusText {
-    label: "READ",
-    description: "fetched {tweet_count} posts",
-    background_color: BLUE,
-};
-
 pub struct StatusBarElement {
     _private: (),
 }
@@ -41,16 +35,14 @@ impl BaseElement for StatusBarElement {
         area: Rect,
         app_state: &AppState,
     ) -> Result<(), ApplicationError> {
-        let content = STATUS_TEXT
-            .description
-            .replace("{tweet_count}", &app_state.tweet_count.to_string());
+        let content = format!("fetched {} posts", app_state.tweet_count);
 
-        let widget = Line::from(vec![
-            Span::from(format!(" {} ", STATUS_TEXT.label)).bold(),
+        let widget = Line::from_iter([
+            Span::from("READ").bold(),
             Span::from(format!(" {} ", content)),
         ])
         .left_aligned()
-        .style(Style::default().bg(STATUS_TEXT.background_color).fg(WHITE));
+        .style(Style::default().bg(BLUE).fg(WHITE));
 
         frame.render_widget(widget, area);
 

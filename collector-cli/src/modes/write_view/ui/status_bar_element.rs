@@ -41,7 +41,7 @@ impl BaseElement for StatusBarElement {
         area: Rect,
         _app_state: &AppState,
     ) -> Result<(), ApplicationError> {
-        let widget = Line::from(vec![
+        let widget = Line::from_iter([
             Span::from(format!(" {} ", STATUS_TEXT.label)).bold(),
             Span::from(format!(" {} ", STATUS_TEXT.description)),
         ])
