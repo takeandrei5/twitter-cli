@@ -1,7 +1,0 @@
-{
-  "access_token": "b3FnQ01TbzJSMUF4RTdNbUtVNkRySm9YMFpPZk54MmllWnNBcVA5bC1YaUdPOjE3NzkwMzU5NTE1ODg6MToxOmF0OjE",
-  "token_type": "bearer",
-  "expires_in": 7200,
-  "refresh_token": "a3hwVXhmOTlJaHdQdG55a1ZYSGw5UWJKaVU1TUl6NkFGaE9nOFdnbDB0Ui1EOjE3NzkwMzU5NTE1ODg6MTowOnJ0OjE",
-  "scope": "users.email users.read tweet.read offline.access"
-}
