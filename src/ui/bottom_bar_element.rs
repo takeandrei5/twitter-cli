@@ -12,27 +12,54 @@ use crate::{
     utils::{ApplicationError, BORDER, SURFACE, TEXT_DIM, TEXT_MUTE},
 };
 
-const SHORTCUTS_READ_MODE: [(&str, &str); 5] = [
+const SHORTCUTS_READ_MODE: [(&str, &str); 6] = [
     ("j/k", "scroll"),
     ("r", "retweet"),
-    ("l", "like"),
-    ("Ctrl+W", "write"),
+    ("l", "like/unlike"),
+    ("Ctrl+w", "quote post"),
+    ("Ctrl+r", "refresh tweets"),
     ("q", "quit"),
 ];
 
-const SHORTCUTS_WRITE_MODE: [(&str, &str); 3] = [
-    ("Ctrl+Enter", "send"),
-    ("Ctrl+W", "cancel"),
-    ("CTRL+J/K", "reply scroll"),
+const SHORTCUTS_WRITE_MODE: [(&str, &str); 5] = [
+    ("CTRL+j/k", "reply scroll"),
+    ("Ctrl+enter", "send"),
+    ("Ctrl+w", "cancel"),
+    ("Ctrl+r", "refresh tweets"),
+    ("q", "quit"),
 ];
 
 pub struct BottomBarElement {
-    _private: (),
+    read_line: Line<'static>,
+    write_line: Line<'static>,
+}
+
+impl Default for BottomBarElement {
+    fn default() -> Self {
+        Self {
+            read_line: Self::create_line(&SHORTCUTS_READ_MODE),
+            write_line: Self::create_line(&SHORTCUTS_WRITE_MODE),
+        }
+    }
 }
 
 impl BottomBarElement {
-    pub fn new() -> Self {
-        Self { _private: () }
+    fn create_line(shortcuts: &[(&str, &str)]) -> Line<'static> {
+        let mut spans = vec![Span::raw(" ")];
+
+        for &(key, action) in shortcuts {
+            spans.push(Span::styled(
+                format!(" {key} "),
+                Style::default().fg(TEXT_DIM).bg(BORDER).bold(),
+            ));
+
+            spans.push(Span::styled(
+                format!(" {action} "),
+                Style::default().fg(TEXT_MUTE),
+            ));
+        }
+
+        Line::from(spans)
     }
 }
 
@@ -44,24 +71,13 @@ impl BaseElement for BottomBarElement {
         app_state: &AppState,
     ) -> Result<(), ApplicationError> {
         let shortcuts_to_draw = match app_state.mode {
-            Mode::Read => &SHORTCUTS_READ_MODE[..],
-            Mode::Write => &SHORTCUTS_WRITE_MODE[..],
+            Mode::Read => &self.read_line,
+            Mode::Write { .. } => &self.write_line,
         };
 
-        let mut spans: Vec<Span<'static>> = vec![Span::raw(" ")];
-        for (key, action) in shortcuts_to_draw {
-            spans.push(Span::styled(
-                format!(" {} ", key),
-                Style::default().fg(TEXT_DIM).bg(BORDER).bold(),
-            ));
-
-            spans.push(Span::styled(
-                format!(" {} ", action),
-                Style::default().fg(TEXT_MUTE),
-            ));
-        }
-
-        let widget = Paragraph::new(Line::from(spans)).left_aligned().bg(SURFACE);
+        let widget = Paragraph::new(shortcuts_to_draw.to_owned())
+            .left_aligned()
+            .bg(SURFACE);
         frame.render_widget(widget, area);
 
         Ok(())

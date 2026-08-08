@@ -9,19 +9,24 @@ use ratatui::{
 use crate::{
     app_state::AppState,
     ui::BaseElement,
-    utils::{BLUE, SURFACE},
+    utils::{ApplicationError, BLUE, SURFACE},
 };
 
 const TITLE: &str = "✦ TWITTER / TUI";
-const RIGHT_AREA_TEXT: &str = "logged in as @{user_tag}";
 
 pub struct HeaderElement {
-    _private: (),
+    left_widget: Line<'static>,
+    background: Block<'static>,
+    right_widget: Line<'static>,
 }
 
 impl HeaderElement {
-    pub fn new() -> Self {
-        Self { _private: () }
+    pub fn new(user_tag: &str) -> Self {
+        Self {
+            left_widget: Line::from(format!(" {} ", TITLE)).left_aligned(),
+            background: Block::default().style(Style::default().bg(SURFACE).fg(BLUE).bold()),
+            right_widget: Line::from(format!(" logged in as @{} ", user_tag)).right_aligned(),
+        }
     }
 }
 
@@ -30,21 +35,14 @@ impl BaseElement for HeaderElement {
         &mut self,
         frame: &mut Frame,
         area: Rect,
-        app_state: &AppState,
-    ) -> Result<(), crate::utils::ApplicationError> {
-        let layout = Layout::horizontal([Constraint::Min(0); 2]).split(area);
+        _app_state: &AppState,
+    ) -> Result<(), ApplicationError> {
+        let layout = Layout::horizontal([Constraint::Fill(1); 2]);
+        let [left_widget_area, right_widget_area] = area.layout(&layout);
 
-        let background = Block::default().style(Style::default().bg(SURFACE).fg(BLUE).bold());
-        frame.render_widget(background, area);
-
-        let left_widget = Line::from(format!(" {} ", TITLE)).left_aligned();
-        frame.render_widget(left_widget, layout[0]);
-
-        let user_tag = app_state.user_tag.as_ref().unwrap();
-
-        let right_area_content = RIGHT_AREA_TEXT.replace("{user_tag}", user_tag);
-        let right_widget = Line::from(format!(" {} ", right_area_content)).right_aligned();
-        frame.render_widget(right_widget, layout[1]);
+        frame.render_widget(&self.background, area);
+        frame.render_widget(&self.left_widget, left_widget_area);
+        frame.render_widget(&self.right_widget, right_widget_area);
 
         Ok(())
     }

@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{
     Frame,
@@ -7,67 +8,146 @@ use ratatui::{
 };
 
 use crate::{
-    app_state::AppState,
-    custom_widgets::{Tweet, TweetState, TweetWidget},
-    fake_data::create_fake_data,
+    app_state::{AppState, ReplyTarget},
+    custom_widgets::{TweetState, TweetWidget},
     ui::BaseElement,
     utils::{ApplicationError, BG},
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct BodyElement {
-    tweets: Vec<Tweet>,
     current_list_index: usize,
 }
 
 impl BodyElement {
-    pub fn new() -> Self {
-        let tweets = create_fake_data();
-        Self {
-            tweets,
-            current_list_index: 0,
-        }
-    }
-
-    const fn reset(&mut self) {
-        self.current_list_index = 0;
-    }
-
-    fn move_list_index_up(&mut self) {
+    fn move_list_index_up(&mut self, max_len: usize) {
         let cursor_moved_top = self.current_list_index.saturating_sub(1);
-        self.current_list_index = self.clamp_list_index(cursor_moved_top);
+        self.current_list_index = self.clamp_list_index(cursor_moved_top, max_len);
     }
 
-    fn move_list_index_down(&mut self) {
+    fn move_list_index_down(&mut self, max_len: usize) {
         let cursor_moved_down = self.current_list_index.saturating_add(1);
-        self.current_list_index = self.clamp_list_index(cursor_moved_down);
+        self.current_list_index = self.clamp_list_index(cursor_moved_down, max_len);
     }
 
-    fn clamp_list_index(&self, new_list_index: usize) -> usize {
-        new_list_index.clamp(0, self.tweets.len())
+    fn clamp_list_index(&self, new_list_index: usize, max_len: usize) -> usize {
+        new_list_index.clamp(0, max_len)
+    }
+
+    async fn toggle_like(&mut self, app_state: &mut AppState) -> Result<(), ApplicationError> {
+        let current_tweet_data = app_state
+            .tweets
+            .get(self.current_list_index)
+            .map(|tweet| (&tweet.id, tweet.liked));
+
+        let (tweet_id, was_liked) = match current_tweet_data {
+            Some((tweet_id, was_liked)) => (tweet_id, was_liked),
+            _ => {
+                tracing::debug!(
+                    current_index = self.current_list_index,
+                    tweets_count = app_state.tweets.len(),
+                    "Could not handle LIKE/UNLIKE action from body element"
+                );
+                return Ok(());
+            }
+        };
+
+        let user_id = &app_state.user_info.id;
+
+        if was_liked {
+            app_state
+                .twitter_client
+                .unlike_post(tweet_id, user_id)
+                .await?;
+        } else {
+            app_state
+                .twitter_client
+                .like_post(tweet_id, user_id)
+                .await?;
+        }
+
+        if let Some(tweet) = app_state.tweets.get_mut(self.current_list_index) {
+            tweet.liked = !was_liked;
+            tweet.likes = if was_liked {
+                tweet.likes.saturating_sub(1)
+            } else {
+                tweet.likes.saturating_add(1)
+            };
+        }
+
+        Ok(())
+    }
+
+    async fn repost_current(&mut self, app_state: &mut AppState) -> Result<(), ApplicationError> {
+        let Some((tweet_id, was_reposted)) = app_state
+            .tweets
+            .get(self.current_list_index)
+            .map(|tweet| (tweet.id.clone(), tweet.retweeted))
+        else {
+            tracing::debug!(
+                current_index = self.current_list_index,
+                tweets_count = app_state.tweets.len(),
+                "Could not handle REPOST action from body element"
+            );
+            return Ok(());
+        };
+
+        if was_reposted {
+            return Ok(());
+        }
+
+        let user_id = app_state.user_info.id.clone();
+        app_state
+            .twitter_client
+            .repost_post(&tweet_id, &user_id)
+            .await?;
+
+        if let Some(tweet) = app_state.tweets.get_mut(self.current_list_index) {
+            tweet.retweeted = true;
+        }
+
+        Ok(())
     }
 }
 
+#[async_trait(?Send)]
 impl BaseElement for BodyElement {
-    fn handle_key_event(&mut self, key: KeyEvent, _event: &Event, _app_state: &AppState) {
+    fn handle_prepare_for_state_change(&mut self, app_state: &AppState) -> Option<ReplyTarget> {
+        if let Some(current_tweet) = app_state.tweets.get(self.current_list_index) {
+            return Some(ReplyTarget {
+                tweet: current_tweet.clone(),
+                handle: current_tweet.handle.clone(),
+            });
+        }
+
+        None
+    }
+
+    async fn handle_key_event(
+        &mut self,
+        key: KeyEvent,
+        _event: &Event,
+        app_state: &mut AppState,
+    ) -> Result<(), ApplicationError> {
+        let tweets_len = app_state.tweets.len();
         match (key.modifiers, key.code) {
-            (KeyModifiers::NONE, KeyCode::Char('j')) => {
-                self.move_list_index_down();
-            }
-            (KeyModifiers::NONE, KeyCode::Char('k')) => {
-                self.move_list_index_up();
-            }
+            (KeyModifiers::NONE, KeyCode::Char('j')) => self.move_list_index_down(tweets_len),
+            (KeyModifiers::NONE, KeyCode::Char('k')) => self.move_list_index_up(tweets_len),
+            (KeyModifiers::NONE, KeyCode::Char('l')) => self.toggle_like(app_state).await?,
+            (KeyModifiers::NONE, KeyCode::Char('r')) => self.repost_current(app_state).await?,
             _ => {}
         }
+
+        Ok(())
     }
 
     fn draw(
         &mut self,
         frame: &mut Frame,
         area: Rect,
-        _app_state: &AppState,
+        app_state: &AppState,
     ) -> Result<(), ApplicationError> {
-        let widgets: Vec<TweetWidget> = self
+        let widgets: Vec<TweetWidget> = app_state
             .tweets
             .iter()
             .cloned()
@@ -110,5 +190,9 @@ impl BaseElement for BodyElement {
         }
 
         Ok(())
+    }
+
+    fn reset(&mut self) {
+        self.current_list_index = 0;
     }
 }

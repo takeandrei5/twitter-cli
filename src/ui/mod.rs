@@ -1,7 +1,7 @@
-pub mod base_element;
-pub mod bottom_bar_element;
-pub mod divider_element;
-pub mod header_element;
+mod base_element;
+mod bottom_bar_element;
+mod divider_element;
+mod header_element;
 
 pub use base_element::BaseElement;
 pub use bottom_bar_element::BottomBarElement;

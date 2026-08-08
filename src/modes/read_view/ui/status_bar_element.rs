@@ -1,7 +1,7 @@
 use ratatui::{
     Frame,
     layout::Rect,
-    style::{Color, Style, Stylize},
+    style::{Style, Stylize},
     text::{Line, Span},
 };
 
@@ -10,13 +10,6 @@ use crate::{
     ui::BaseElement,
     utils::{ApplicationError, BLUE, WHITE},
 };
-
-#[derive(Debug, Clone, Copy)]
-struct StatusText {
-    label: &'static str,
-    description: &'static str,
-    background_color: Color,
-}
 
 pub struct StatusBarElement {
     _private: (),
@@ -35,7 +28,7 @@ impl BaseElement for StatusBarElement {
         area: Rect,
         app_state: &AppState,
     ) -> Result<(), ApplicationError> {
-        let content = format!("fetched {} posts", app_state.tweet_count);
+        let content = format!("fetched {} posts", app_state.tweets.len());
 
         let widget = Line::from_iter([
             Span::from("READ").bold(),

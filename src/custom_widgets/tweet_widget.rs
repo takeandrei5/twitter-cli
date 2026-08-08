@@ -8,25 +8,12 @@ use ratatui::{
     widgets::{Block, Paragraph, Widget, Wrap},
 };
 
-use chrono::NaiveDateTime;
-
-use crate::utils::{BG, GREEN, PINK, SELECT_BG, TEXT, TEXT_DIM, WHITE};
+use crate::{
+    api::Tweet,
+    utils::{BG, GREEN, PINK, SELECT_BG, TEXT, TEXT_DIM, WHITE},
+};
 
 const MORE_TEXT: &str = "...more info";
-
-#[allow(dead_code)]
-#[derive(Debug, Clone)]
-pub struct Tweet {
-    pub name: String,
-    pub handle: String,
-    pub time: NaiveDateTime,
-    pub body: String,
-    pub replies: u32,
-    pub retweets: u32,
-    pub likes: u32,
-    pub liked: bool,
-    pub retweeted: bool,
-}
 
 #[derive(Debug, Clone)]
 pub struct TweetWidget {
@@ -97,13 +84,17 @@ impl TweetWidget {
     }
 
     fn render_third_zone(&self, area: Rect, buf: &mut Buffer) {
+        let liked_text = match self.tweet.liked {
+            true => format!("♥{}", self.tweet.likes),
+            false => format!("♡{}", self.tweet.likes),
+        };
+
         let third_zone = Line::from_iter([
             Span::from(format!("↩{}", self.tweet.replies))
                 .style(Style::default().bold().fg(TEXT_DIM)),
             Span::from(format!(" {} ", self.tweet.retweets))
                 .style(Style::default().not_bold().fg(GREEN)),
-            Span::from(format!("♥{}", self.tweet.likes))
-                .style(Style::default().not_bold().fg(PINK)),
+            Span::from(liked_text).style(Style::default().not_bold().fg(PINK)),
         ]);
         third_zone.render(area, buf);
     }

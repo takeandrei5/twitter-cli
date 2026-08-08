@@ -3,6 +3,7 @@ use crate::{
     ui::BaseElement,
     utils::{ApplicationError, BG, PINK, TEXT, TEXT_DIM},
 };
+use async_trait::async_trait;
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{
     Frame,
@@ -40,33 +41,47 @@ impl BodyElement {
         }
     }
 
-    fn submit_message(&mut self) {
-        self.input.reset();
+    async fn submit_message(&mut self, app_state: &AppState) -> Result<(), ApplicationError> {
+        if let Mode::Write {
+            reply_to: Some(reply_target),
+        } = &app_state.mode
+        {
+            app_state
+                .twitter_client
+                .quote_post(self.input.value(), &reply_target.tweet.id)
+                .await?;
+            self.input.reset();
+        }
+
+        Ok(())
     }
 }
 
+#[async_trait(?Send)]
 impl BaseElement for BodyElement {
     fn handle_state_change(&mut self, app_state: &AppState) {
-        if app_state.mode == Mode::Write {
-            self.input.reset();
+        match app_state.mode {
+            Mode::Read => {}
+            Mode::Write { .. } => self.input.reset(),
         }
     }
 
-    fn handle_key_event(&mut self, key: KeyEvent, event: &Event, _app_state: &AppState) {
+    async fn handle_key_event(
+        &mut self,
+        key: KeyEvent,
+        event: &Event,
+        app_state: &mut AppState,
+    ) -> Result<(), ApplicationError> {
         match (key.modifiers, key.code) {
-            (KeyModifiers::CONTROL, KeyCode::Char('j')) => {
-                self.move_scroll_down();
-            }
-            (KeyModifiers::CONTROL, KeyCode::Char('k')) => {
-                self.move_scroll_up();
-            }
-            (KeyModifiers::CONTROL, KeyCode::Enter) => {
-                self.submit_message();
-            }
+            (KeyModifiers::CONTROL, KeyCode::Char('j')) => self.move_scroll_down(),
+            (KeyModifiers::CONTROL, KeyCode::Char('k')) => self.move_scroll_up(),
+            (KeyModifiers::CONTROL, KeyCode::Enter) => self.submit_message(app_state).await?,
             _ => {
                 self.input.handle_event(event);
             }
         }
+
+        Ok(())
     }
 
     fn draw(
@@ -75,7 +90,12 @@ impl BaseElement for BodyElement {
         area: Rect,
         app_state: &AppState,
     ) -> Result<(), ApplicationError> {
-        let tweet = app_state.reply_to_user_tweet.as_ref().unwrap();
+        let reply_target = match &app_state.mode {
+            Mode::Read => panic!("Cannot render write view for mode read"),
+            Mode::Write { reply_to } => reply_to
+                .as_ref()
+                .expect("Reply to should not be None in Write view"),
+        };
 
         let container = Block::default().bg(BG);
         frame.render_widget(container, area);
@@ -88,11 +108,10 @@ impl BaseElement for BodyElement {
             .border_type(BorderType::Rounded)
             .title(format!(
                 "↩ replying to {} · posted at {}",
-                tweet.handle,
-                tweet.time.format("%Y-%m-%d %H:%M")
+                reply_target.handle,
+                reply_target.tweet.time.format("%Y-%m-%d %H:%M")
             ));
 
-        let tweet = app_state.reply_to_user_tweet.as_ref().unwrap();
         let inner_top_block = top_block.inner(reply_area);
 
         /*
@@ -102,7 +121,7 @@ impl BaseElement for BodyElement {
         */
         let tweet_body_height = inner_top_block.height.max(3);
 
-        let inner_top_block_tweet_body = Paragraph::new(&*tweet.body)
+        let inner_top_block_tweet_body = Paragraph::new(&*reply_target.tweet.body)
             .wrap(Wrap { trim: true })
             .scroll((self.scroll_tweet_body as u16, 0))
             .fg(TEXT);

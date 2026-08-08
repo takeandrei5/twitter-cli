@@ -28,4 +28,7 @@ pub enum ApplicationError {
 
     #[error("Reqwest error. {0}")]
     ReqwestError(#[from] oauth2::reqwest::Error),
+
+    #[error("X API call request error. {0}")]
+    XApiCallError(String),
 }

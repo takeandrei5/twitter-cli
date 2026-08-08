@@ -1,79 +1,32 @@
-use crossterm::event::{Event, KeyEvent};
-use ratatui::{
-    Frame,
-    layout::{Constraint, Layout},
-};
-
 use crate::{
     app_state::AppState,
     modes::view::View,
     ui::{BaseElement, BottomBarElement, DividerElement, HeaderElement},
-    utils::ApplicationError,
 };
 
 mod ui;
-pub use ui::BodyElement;
-pub use ui::StatusBarElement;
+use ui::{BodyElement, StatusBarElement};
 
 pub struct ReadView {
     elements: [Box<dyn BaseElement>; 5],
 }
 
 impl ReadView {
-    pub fn new() -> Self {
+    pub fn new(app_state: &AppState) -> Self {
         Self {
             elements: [
-                Box::new(HeaderElement::new()),
-                Box::new(DividerElement::new()),
-                Box::new(BodyElement::new()),
+                Box::new(HeaderElement::new(&app_state.user_info.username)),
+                Box::new(DividerElement::default()),
+                Box::new(BodyElement::default()),
                 Box::new(StatusBarElement::new()),
-                Box::new(BottomBarElement::new()),
+                Box::new(BottomBarElement::default()),
             ],
         }
     }
 }
 
 impl View for ReadView {
-    fn render_view(
-        &mut self,
-        frame: &mut Frame,
-        app_state: &AppState,
-    ) -> Result<(), ApplicationError> {
-        let layout = Layout::vertical([
-            Constraint::Length(1), // header
-            Constraint::Length(1), // divider
-            Constraint::Min(0),    // tweet list
-            Constraint::Length(1), // status bar
-            Constraint::Length(1), // bottom bar
-        ]);
-        let [
-            header_area,
-            divider_area,
-            body_area,
-            status_bar_area,
-            bottom_bar_area,
-        ] = frame.area().layout(&layout);
-
-        let [header, divider, body, status_bar, bottom_bar] = &mut self.elements;
-
-        header.draw(frame, header_area, app_state)?;
-        divider.draw(frame, divider_area, app_state)?;
-        body.draw(frame, body_area, app_state)?;
-        status_bar.draw(frame, status_bar_area, app_state)?;
-        bottom_bar.draw(frame, bottom_bar_area, app_state)?;
-
-        Ok(())
-    }
-
-    fn handle_key_event(&mut self, key: KeyEvent, event: &Event, app_state: &AppState) {
-        self.elements
-            .iter_mut()
-            .for_each(|x| x.handle_key_event(key, event, app_state));
-    }
-
-    fn on_state_change(&mut self, app_state: &AppState) {
-        self.elements
-            .iter_mut()
-            .for_each(|x| x.handle_state_change(app_state));
+    fn elements(&mut self) -> &mut [Box<dyn BaseElement>; 5] {
+        &mut self.elements
     }
 }

@@ -1,25 +1,13 @@
 use oauth2::{
-    AuthUrl, AuthorizationCode, ClientId, ClientSecret, CsrfToken, EmptyExtraTokenFields,
-    PkceCodeChallenge, PkceCodeVerifier, RedirectUrl, Scope, StandardTokenResponse, TokenResponse,
-    TokenUrl,
-    basic::{BasicClient, BasicTokenType},
-    reqwest::{blocking::ClientBuilder, redirect::Policy},
+    AuthUrl, AuthorizationCode, ClientId, ClientSecret, CsrfToken, PkceCodeChallenge,
+    PkceCodeVerifier, RedirectUrl, Scope, TokenResponse, TokenUrl,
+    basic::BasicClient,
+    reqwest::{ClientBuilder, redirect::Policy},
 };
 
 use crate::utils::ApplicationError;
 
-type TwitterOAuthClient = oauth2::Client<
-    oauth2::StandardErrorResponse<oauth2::basic::BasicErrorResponseType>,
-    StandardTokenResponse<EmptyExtraTokenFields, BasicTokenType>,
-    oauth2::StandardTokenIntrospectionResponse<EmptyExtraTokenFields, BasicTokenType>,
-    oauth2::StandardRevocableToken,
-    oauth2::StandardErrorResponse<oauth2::RevocationErrorResponseType>,
-    oauth2::EndpointSet,
-    oauth2::EndpointNotSet,
-    oauth2::EndpointNotSet,
-    oauth2::EndpointNotSet,
-    oauth2::EndpointSet,
->;
+use super::TwitterOAuthClient;
 
 pub struct AuthClient {
     client: TwitterOAuthClient,
@@ -50,10 +38,11 @@ impl AuthClient {
             .authorize_url(CsrfToken::new_random)
             .set_pkce_challenge(pkce_challenge);
 
-        const REQUIRED_SCOPES: [&str; 6] = [
+        const REQUIRED_SCOPES: [&str; 7] = [
             "tweet.read",
             "tweet.write",
             "users.read",
+            "like.read",
             "like.write",
             "follows.read",
             "offline.access",
@@ -71,7 +60,7 @@ impl AuthClient {
         (pkce_verifier, csrf_token)
     }
 
-    pub fn handle_callback(
+    pub async fn handle_callback(
         &self,
         pkce_verifier: PkceCodeVerifier,
         code: String,
@@ -91,7 +80,8 @@ impl AuthClient {
             .client
             .exchange_code(AuthorizationCode::new(code))
             .set_pkce_verifier(pkce_verifier)
-            .request(&http_client)?;
+            .request_async(&http_client)
+            .await?;
 
         Ok(token_result.access_token().secret().to_owned())
     }
