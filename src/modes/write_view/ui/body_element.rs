@@ -1,5 +1,5 @@
 use crate::{
-    app_state::{AppState, Mode},
+    app_state::{AppState, Mode, ViewAction},
     ui::BaseElement,
     utils::{ApplicationError, BG, PINK, TEXT, TEXT_DIM},
 };
@@ -42,14 +42,12 @@ impl BodyElement {
     }
 
     async fn submit_message(&mut self, app_state: &AppState) -> Result<(), ApplicationError> {
-        if let Mode::Write {
-            reply_to: Some(reply_target),
-        } = &app_state.mode
-        {
+        if let Mode::Write { reply_target } = &app_state.mode {
             app_state
                 .twitter_client
                 .quote_post(self.input.value(), &reply_target.tweet.id)
                 .await?;
+
             self.input.reset();
         }
 
@@ -71,17 +69,20 @@ impl BaseElement for BodyElement {
         key: KeyEvent,
         event: &Event,
         app_state: &mut AppState,
-    ) -> Result<(), ApplicationError> {
+    ) -> Result<Option<ViewAction>, ApplicationError> {
         match (key.modifiers, key.code) {
             (KeyModifiers::CONTROL, KeyCode::Char('j')) => self.move_scroll_down(),
             (KeyModifiers::CONTROL, KeyCode::Char('k')) => self.move_scroll_up(),
-            (KeyModifiers::CONTROL, KeyCode::Enter) => self.submit_message(app_state).await?,
+            (KeyModifiers::CONTROL, KeyCode::Enter) => {
+                self.submit_message(app_state).await?;
+                return Ok(Some(ViewAction::SwitchToRead));
+            }
             _ => {
                 self.input.handle_event(event);
             }
         }
 
-        Ok(())
+        Ok(None)
     }
 
     fn draw(
@@ -90,11 +91,8 @@ impl BaseElement for BodyElement {
         area: Rect,
         app_state: &AppState,
     ) -> Result<(), ApplicationError> {
-        let reply_target = match &app_state.mode {
-            Mode::Read => panic!("Cannot render write view for mode read"),
-            Mode::Write { reply_to } => reply_to
-                .as_ref()
-                .expect("Reply to should not be None in Write view"),
+        let Mode::Write { reply_target } = &app_state.mode else {
+            return Ok(());
         };
 
         let container = Block::default().bg(BG);
@@ -173,5 +171,9 @@ impl BaseElement for BodyElement {
         ));
 
         Ok(())
+    }
+
+    fn reset(&mut self) {
+        self.input.reset();
     }
 }

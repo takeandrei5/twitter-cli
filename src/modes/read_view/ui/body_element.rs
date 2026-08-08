@@ -8,7 +8,7 @@ use ratatui::{
 };
 
 use crate::{
-    app_state::{AppState, ReplyTarget},
+    app_state::{AppState, ReplyTarget, ViewAction},
     custom_widgets::{TweetState, TweetWidget},
     ui::BaseElement,
     utils::{ApplicationError, BG},
@@ -82,7 +82,7 @@ impl BodyElement {
         let Some((tweet_id, was_reposted)) = app_state
             .tweets
             .get(self.current_list_index)
-            .map(|tweet| (tweet.id.clone(), tweet.retweeted))
+            .map(|tweet| (&tweet.id, tweet.retweeted))
         else {
             tracing::debug!(
                 current_index = self.current_list_index,
@@ -96,10 +96,10 @@ impl BodyElement {
             return Ok(());
         }
 
-        let user_id = app_state.user_info.id.clone();
+        let user_id = &app_state.user_info.id;
         app_state
             .twitter_client
-            .repost_post(&tweet_id, &user_id)
+            .repost_post(tweet_id, user_id)
             .await?;
 
         if let Some(tweet) = app_state.tweets.get_mut(self.current_list_index) {
@@ -107,6 +107,26 @@ impl BodyElement {
         }
 
         Ok(())
+    }
+
+    fn open_url(&self, app_state: &AppState) {
+        if let Some(current_tweet) = app_state.tweets.get(self.current_list_index) {
+            let url = format!(
+                "https://x.com/{}/status/{}",
+                current_tweet.handle, current_tweet.id
+            );
+
+            let _ = webbrowser::open(&url).map_err(|error| {
+                tracing::debug!(
+                    "Could not open URL for tweet handle {} and tweet id {}. Error: {}",
+                    current_tweet.handle,
+                    current_tweet.id,
+                    error
+                )
+            });
+        } else {
+            tracing::debug!("No tweets found.")
+        }
     }
 }
 
@@ -128,17 +148,19 @@ impl BaseElement for BodyElement {
         key: KeyEvent,
         _event: &Event,
         app_state: &mut AppState,
-    ) -> Result<(), ApplicationError> {
+    ) -> Result<Option<ViewAction>, ApplicationError> {
         let tweets_len = app_state.tweets.len();
         match (key.modifiers, key.code) {
             (KeyModifiers::NONE, KeyCode::Char('j')) => self.move_list_index_down(tweets_len),
             (KeyModifiers::NONE, KeyCode::Char('k')) => self.move_list_index_up(tweets_len),
             (KeyModifiers::NONE, KeyCode::Char('l')) => self.toggle_like(app_state).await?,
             (KeyModifiers::NONE, KeyCode::Char('r')) => self.repost_current(app_state).await?,
+            (KeyModifiers::NONE, KeyCode::Char('o')) => self.open_url(app_state),
+
             _ => {}
         }
 
-        Ok(())
+        Ok(None)
     }
 
     fn draw(
@@ -155,7 +177,7 @@ impl BaseElement for BodyElement {
             .collect();
 
         let container = Block::default().bg(BG);
-        frame.render_widget(container.clone(), area);
+        frame.render_widget(&container, area);
 
         const TWEET_HEIGHT: u16 = 4;
         let visible_count: usize = (area.height / TWEET_HEIGHT).into();
@@ -185,7 +207,8 @@ impl BaseElement for BodyElement {
 
         for (item, layout_area) in visible_widgets.into_iter().zip(layout.iter()) {
             let inner = container.inner(*layout_area);
-            frame.render_widget(container.clone(), *layout_area);
+
+            frame.render_widget(&container, *layout_area);
             frame.render_widget(item, inner);
         }
 

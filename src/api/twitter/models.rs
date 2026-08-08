@@ -12,11 +12,13 @@ pub struct QuotePostRequest {
     pub quote_tweet_id: String,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct CreatePostResponse {
     pub data: CreatedPost,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct CreatedPost {
     pub id: String,

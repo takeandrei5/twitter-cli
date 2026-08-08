@@ -1,12 +1,12 @@
 use std::io::Error;
 
-use crossterm::event::{self, Event, KeyCode, KeyModifiers};
+use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{DefaultTerminal, Frame};
 use tracing::Level;
 
 use crate::{
     api::{AuthClient, LocalClient, TwitterClient},
-    app_state::{AppState, Mode},
+    app_state::{AppState, Mode, ViewAction},
     modes::{ReadView, View, WriteView},
     utils::ApplicationError,
 };
@@ -62,41 +62,79 @@ async fn app(
         if let Event::Key(key) = read_event {
             match (key.modifiers, key.code) {
                 (KeyModifiers::CONTROL, KeyCode::Char('w')) => {
-                    app_state.mode = match &app_state.mode {
-                        Mode::Read => Mode::Write {
-                            reply_to: read_view.prepare_for_state_change(&app_state),
-                        },
-                        Mode::Write { .. } => Mode::Read,
-                    };
-
-                    match &app_state.mode {
-                        Mode::Read => read_view.on_state_change(&app_state),
-                        Mode::Write { .. } => write_view.on_state_change(&app_state),
-                    };
+                    switch_mode(&mut app_state, &mut read_view, &mut write_view)
                 }
                 (KeyModifiers::CONTROL, KeyCode::Char('r')) => {
-                    app_state.refresh_tweets().await?;
-                    read_view.reset();
-                    write_view.reset();
+                    refresh_tweets(&mut app_state, &mut read_view, &mut write_view).await?
                 }
                 (KeyModifiers::NONE, KeyCode::Char('q')) => return Ok(()),
                 _ => {
-                    let mode = app_state.mode.clone();
-                    match mode {
-                        Mode::Read => {
-                            read_view
-                                .handle_key_event(key, &read_event, &mut app_state)
-                                .await?;
-                        }
-                        Mode::Write { .. } => {
-                            write_view
-                                .handle_key_event(key, &read_event, &mut app_state)
-                                .await?;
-                        }
+                    if let Some(action) = handle_view_key(
+                        key,
+                        &read_event,
+                        &mut app_state,
+                        &mut read_view,
+                        &mut write_view,
+                    )
+                    .await?
+                    {
+                        handle_view_action(action, &mut app_state, &mut read_view, &mut write_view);
                     }
                 }
             }
         }
+    }
+}
+
+fn switch_mode(app_state: &mut AppState, read_view: &mut ReadView, write_view: &mut WriteView) {
+    if let Some(next_mode) = match &app_state.mode {
+        Mode::Read => read_view
+            .prepare_for_state_change(app_state)
+            .map(|reply_target| Mode::Write { reply_target }),
+        Mode::Write { .. } => Some(Mode::Read),
+    } {
+        app_state.mode = next_mode;
+    }
+
+    match &app_state.mode {
+        Mode::Read => read_view.on_state_change(app_state),
+        Mode::Write { .. } => write_view.on_state_change(app_state),
+    }
+}
+
+async fn refresh_tweets(
+    app_state: &mut AppState,
+    read_view: &mut ReadView,
+    write_view: &mut WriteView,
+) -> Result<(), ApplicationError> {
+    app_state.refresh_tweets().await?;
+    read_view.reset();
+    write_view.reset();
+
+    Ok(())
+}
+
+async fn handle_view_key(
+    key: KeyEvent,
+    event: &Event,
+    app_state: &mut AppState,
+    read_view: &mut ReadView,
+    write_view: &mut WriteView,
+) -> Result<Option<ViewAction>, ApplicationError> {
+    match app_state.mode {
+        Mode::Read => read_view.handle_key_event(key, event, app_state).await,
+        Mode::Write { .. } => write_view.handle_key_event(key, event, app_state).await,
+    }
+}
+
+fn handle_view_action(
+    action: ViewAction,
+    app_state: &mut AppState,
+    read_view: &mut ReadView,
+    write_view: &mut WriteView,
+) {
+    match action {
+        ViewAction::SwitchToRead => switch_mode(app_state, read_view, write_view),
     }
 }
 

@@ -12,12 +12,13 @@ use crate::{
     utils::{ApplicationError, BORDER, SURFACE, TEXT_DIM, TEXT_MUTE},
 };
 
-const SHORTCUTS_READ_MODE: [(&str, &str); 6] = [
+const SHORTCUTS_READ_MODE: [(&str, &str); 7] = [
     ("j/k", "scroll"),
     ("r", "retweet"),
     ("l", "like/unlike"),
     ("Ctrl+w", "quote post"),
-    ("Ctrl+r", "refresh tweets"),
+    ("Ctrl+r", "refresh data"),
+    ("o", "open"),
     ("q", "quit"),
 ];
 
@@ -25,7 +26,7 @@ const SHORTCUTS_WRITE_MODE: [(&str, &str); 5] = [
     ("CTRL+j/k", "reply scroll"),
     ("Ctrl+enter", "send"),
     ("Ctrl+w", "cancel"),
-    ("Ctrl+r", "refresh tweets"),
+    ("Ctrl+r", "refresh data"),
     ("q", "quit"),
 ];
 

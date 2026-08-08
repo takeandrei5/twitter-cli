@@ -3,7 +3,7 @@ use crossterm::event::{Event, KeyEvent};
 use ratatui::{Frame, layout::Rect};
 
 use crate::{
-    app_state::{AppState, ReplyTarget},
+    app_state::{AppState, ReplyTarget, ViewAction},
     utils::ApplicationError,
 };
 
@@ -25,8 +25,8 @@ pub trait BaseElement {
         _key: KeyEvent,
         _event: &Event,
         _app_state: &mut AppState,
-    ) -> Result<(), ApplicationError> {
-        Ok(())
+    ) -> Result<Option<ViewAction>, ApplicationError> {
+        Ok(None)
     }
 
     fn handle_state_change(&mut self, _app_state: &AppState) {}

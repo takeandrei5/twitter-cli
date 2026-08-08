@@ -5,7 +5,7 @@ use ratatui::{
 };
 
 use crate::{
-    app_state::{AppState, ReplyTarget},
+    app_state::{AppState, ReplyTarget, ViewAction},
     ui::BaseElement,
     utils::ApplicationError,
 };
@@ -49,12 +49,14 @@ pub trait View {
         key: KeyEvent,
         event: &Event,
         app_state: &mut AppState,
-    ) -> Result<(), ApplicationError> {
+    ) -> Result<Option<ViewAction>, ApplicationError> {
         for element in self.elements() {
-            element.handle_key_event(key, event, app_state).await?;
+            if let Some(action) = element.handle_key_event(key, event, app_state).await? {
+                return Ok(Some(action));
+            }
         }
 
-        Ok(())
+        Ok(None)
     }
 
     fn on_state_change(&mut self, app_state: &AppState) {

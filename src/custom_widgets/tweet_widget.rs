@@ -84,9 +84,10 @@ impl TweetWidget {
     }
 
     fn render_third_zone(&self, area: Rect, buf: &mut Buffer) {
-        let liked_text = match self.tweet.liked {
-            true => format!("♥{}", self.tweet.likes),
-            false => format!("♡{}", self.tweet.likes),
+        let liked_text = if self.tweet.liked {
+            format!("♥{}", self.tweet.likes)
+        } else {
+            format!("♡{}", self.tweet.likes)
         };
 
         let third_zone = Line::from_iter([

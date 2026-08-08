@@ -20,7 +20,11 @@ impl Eq for ReplyTarget {}
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Mode {
     Read,
-    Write { reply_to: Option<ReplyTarget> },
+    Write { reply_target: ReplyTarget },
+}
+
+pub enum ViewAction {
+    SwitchToRead,
 }
 
 pub struct AppState {

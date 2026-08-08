@@ -1,47 +1,63 @@
-use tiny_http::{Response, Server, StatusCode};
+use tiny_http::{Header, Response, Server, StatusCode};
 use url::Url;
 
 use crate::utils::ApplicationError;
 
 const CALLBACK_URL: &str = "/callback";
-const CALLBACK_QUERY_PARAMS: [&str; 2] = ["state", "code"];
+const LOGIN_SUCCESS_HTML: &str = include_str!("login_success.html");
 
 pub struct LocalClient;
 
 impl LocalClient {
     pub fn start_local_client() -> Result<(String, String), ApplicationError> {
         let port = dotenvy::var("TWITTER_REDIRECT_URL_PORT")?;
-        let server = Server::http(format!("127.0.0.1:{}", port)).unwrap();
+        let address = format!("127.0.0.1:{port}");
 
-        let mut code = None;
-        let mut state = None;
+        let server = Server::http(&address).map_err(|error| {
+            ApplicationError::UnexpectedError(std::io::Error::other(error.to_string()))
+        })?;
 
         for request in server.incoming_requests() {
-            let full_url = request.url();
-            let parsed_url = Url::parse(&format!("http://127.0.0.1:{}{}", port, full_url))?;
+            let callback_url = Url::parse(&format!("http://localhost{}", request.url()))?;
 
-            if parsed_url.path() != CALLBACK_URL {
+            if callback_url.path() != CALLBACK_URL {
                 continue;
             }
 
-            parsed_url
+            let code = callback_url
                 .query_pairs()
-                .filter(|(k, _v)| CALLBACK_QUERY_PARAMS.contains(&k.as_ref()))
-                .for_each(|(k, v)| {
-                    if k.as_ref() == "state" {
-                        state = Some(v.into_owned());
-                    } else if k.as_ref() == "code" {
-                        code = Some(v.into_owned())
-                    }
-                });
+                .find(|(key, _)| key == "code")
+                .map(|(_, value)| value.into_owned());
 
-            let _ = request.respond(Response::new_empty(StatusCode(200)));
+            let state = callback_url
+                .query_pairs()
+                .find(|(key, _)| key == "state")
+                .map(|(_, value)| value.into_owned());
 
-            if code.is_some() && state.is_some() {
-                break;
+            let response = Response::from_string(LOGIN_SUCCESS_HTML)
+                .with_header(
+                    Header::from_bytes("Content-Type", "text/html; charset=UTF-8").map_err(
+                        |_| {
+                            ApplicationError::UnexpectedError(std::io::Error::other(
+                                "Could not create HTML content type header",
+                            ))
+                        },
+                    )?,
+                )
+                .with_status_code(StatusCode(200));
+
+            request.respond(response).map_err(|error| {
+                ApplicationError::UnexpectedError(std::io::Error::other(error.to_string()))
+            })?;
+
+            match (code, state) {
+                (Some(code), Some(state)) => return Ok((code, state)),
+                _ => continue,
             }
         }
 
-        Ok((code.unwrap(), state.unwrap()))
+        Err(ApplicationError::UnexpectedError(std::io::Error::other(
+            "The OAuth callback did not contain both code and state",
+        )))
     }
 }
