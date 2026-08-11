@@ -5,8 +5,8 @@ use reqwest::{Client, RequestBuilder};
 use serde::de::DeserializeOwned;
 
 use super::models::{
-    ApiUser, CreatePostResponse, CurrentUserResponse, IdPage, QuotePostRequest, TimelineResponse,
-    Tweet, TweetIdRequest, UserInfo,
+    ApiUser, CreatePostOptions, CreatePostRequest, CreatePostResponse, CurrentUserResponse, IdPage,
+    TimelineResponse, Tweet, TweetIdRequest, UserInfo,
 };
 use crate::utils::ApplicationError;
 
@@ -23,7 +23,7 @@ impl TwitterClient {
         }
     }
 
-    pub async fn get_user_id(&self) -> Result<UserInfo, ApplicationError> {
+    pub async fn get_current_user(&self) -> Result<UserInfo, ApplicationError> {
         let request = self
             .client
             .get("https://api.x.com/2/users/me")
@@ -72,21 +72,21 @@ impl TwitterClient {
         Ok(())
     }
 
-    pub async fn quote_post(
+    pub async fn create_post(
         &self,
         text: &str,
-        quoted_tweet_id: &str,
+        options: CreatePostOptions,
     ) -> Result<(), ApplicationError> {
         let request = self
             .client
             .post("https://api.x.com/2/tweets")
             .bearer_auth(&self.access_token)
-            .json(&QuotePostRequest {
+            .json(&CreatePostRequest {
                 text: text.to_owned(),
-                quote_tweet_id: quoted_tweet_id.to_owned(),
+                options,
             });
 
-        let _: CreatePostResponse = self.send_json(request, "create quote post").await?;
+        let _: CreatePostResponse = self.send_json(request, "create post").await?;
 
         Ok(())
     }

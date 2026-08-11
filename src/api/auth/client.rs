@@ -71,10 +71,7 @@ impl AuthClient {
             return Err(ApplicationError::CSRFTokenMismatch()); // adjust to your error type
         }
 
-        let http_client = ClientBuilder::new()
-            // Following redirects opens the client up to SSRF vulnerabilities.
-            .redirect(Policy::none())
-            .build()?;
+        let http_client = ClientBuilder::new().redirect(Policy::none()).build()?;
 
         let token_result = self
             .client

@@ -1,66 +1,132 @@
 use crate::{
+    api::CreatePostOptions,
     app_state::{AppState, Mode, ViewAction},
     ui::BaseElement,
-    utils::{ApplicationError, BG, PINK, TEXT, TEXT_DIM},
+    utils::{ApplicationError, BG, BLUE, PINK, TEXT_DIM},
 };
 use async_trait::async_trait;
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{
     Frame,
     layout::{Constraint, Layout, Position, Rect},
-    style::Stylize,
-    widgets::{Block, BorderType, Paragraph, Wrap},
+    style::{Style, Stylize},
+    text::Line,
+    widgets::{Block, Paragraph},
 };
 use tui_input::{Input, backend::crossterm::EventHandler};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct BodyElement {
     input: Input,
-    scroll_tweet_body: usize,
-    upper_scroll_limit_boundary: usize,
+    options: CreatePostOptions,
+    focused_option: OptionFocus,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+enum OptionFocus {
+    #[default]
+    Input,
+    ShareWithFollowers,
+    PaidPartnership,
+    Promoted,
 }
 
 impl BodyElement {
-    pub fn new() -> Self {
-        Self {
-            input: Input::new(String::new()),
-            scroll_tweet_body: 0,
-            upper_scroll_limit_boundary: 0,
-        }
+    fn focus_next(&mut self) {
+        self.focused_option = match self.focused_option {
+            OptionFocus::Input => OptionFocus::ShareWithFollowers,
+            OptionFocus::ShareWithFollowers => OptionFocus::PaidPartnership,
+            OptionFocus::PaidPartnership => OptionFocus::Promoted,
+            OptionFocus::Promoted => OptionFocus::Input,
+        };
     }
 
-    fn move_scroll_up(&mut self) {
-        if self.scroll_tweet_body > 0 {
-            self.scroll_tweet_body -= 1;
-        }
+    fn focus_previous(&mut self) {
+        self.focused_option = match self.focused_option {
+            OptionFocus::Input => OptionFocus::Promoted,
+            OptionFocus::ShareWithFollowers => OptionFocus::Input,
+            OptionFocus::PaidPartnership => OptionFocus::ShareWithFollowers,
+            OptionFocus::Promoted => OptionFocus::PaidPartnership,
+        };
     }
 
-    fn move_scroll_down(&mut self) {
-        if self.scroll_tweet_body < self.upper_scroll_limit_boundary {
-            self.scroll_tweet_body += 1;
+    fn toggle_focused_option(&mut self) {
+        match self.focused_option {
+            OptionFocus::Input => {}
+            OptionFocus::ShareWithFollowers => {
+                self.options.share_with_followers = !self.options.share_with_followers;
+            }
+            OptionFocus::PaidPartnership => {
+                self.options.paid_partnership = !self.options.paid_partnership;
+            }
+            OptionFocus::Promoted => {
+                self.options.nullcast = !self.options.nullcast;
+            }
         }
     }
 
     async fn submit_message(&mut self, app_state: &AppState) -> Result<(), ApplicationError> {
-        if let Mode::Write { reply_target } = &app_state.mode {
+        if matches!(app_state.mode, Mode::Write) {
             app_state
                 .twitter_client
-                .quote_post(self.input.value(), &reply_target.tweet.id)
+                .create_post(self.input.value(), self.options)
                 .await?;
 
             self.input.reset();
+            self.options = CreatePostOptions::default();
+            self.focused_option = OptionFocus::Input;
         }
 
         Ok(())
+    }
+
+    fn draw_options(&self, frame: &mut Frame, area: Rect) {
+        let options_color = if self.focused_option == OptionFocus::Input {
+            TEXT_DIM
+        } else {
+            PINK
+        };
+        let options_block = Block::bordered().title("Options").fg(options_color);
+        let option_areas =
+            Layout::horizontal([Constraint::Fill(1); 3]).split(options_block.inner(area));
+
+        frame.render_widget(options_block, area);
+
+        let options = [
+            (
+                OptionFocus::ShareWithFollowers,
+                self.options.share_with_followers,
+                "Share with followers",
+            ),
+            (
+                OptionFocus::PaidPartnership,
+                self.options.paid_partnership,
+                "Paid partnership",
+            ),
+            (OptionFocus::Promoted, self.options.nullcast, "Promoted"),
+        ];
+
+        for ((focus, checked, label), option_area) in options.into_iter().zip(option_areas.iter()) {
+            let checkbox = if checked { "[x]" } else { "[ ]" };
+            let style = if self.focused_option == focus {
+                Style::default().fg(BLUE).bold()
+            } else {
+                Style::default()
+            };
+
+            let line = Line::styled(format!(" {checkbox} {label}"), style);
+            frame.render_widget(line, *option_area);
+        }
     }
 }
 
 #[async_trait(?Send)]
 impl BaseElement for BodyElement {
     fn handle_state_change(&mut self, app_state: &AppState) {
-        match app_state.mode {
-            Mode::Read => {}
-            Mode::Write { .. } => self.input.reset(),
+        if matches!(app_state.mode, Mode::Write) {
+            self.input.reset();
+            self.options = CreatePostOptions::default();
+            self.focused_option = OptionFocus::Input;
         }
     }
 
@@ -71,15 +137,25 @@ impl BaseElement for BodyElement {
         app_state: &mut AppState,
     ) -> Result<Option<ViewAction>, ApplicationError> {
         match (key.modifiers, key.code) {
-            (KeyModifiers::CONTROL, KeyCode::Char('j')) => self.move_scroll_down(),
-            (KeyModifiers::CONTROL, KeyCode::Char('k')) => self.move_scroll_up(),
-            (KeyModifiers::CONTROL, KeyCode::Enter) => {
+            (KeyModifiers::NONE, KeyCode::Tab) | (KeyModifiers::SHIFT, KeyCode::BackTab) => {
+                self.focus_next()
+            }
+            (KeyModifiers::SHIFT, KeyCode::Tab) | (KeyModifiers::NONE, KeyCode::BackTab) => {
+                self.focus_previous()
+            }
+            (KeyModifiers::NONE, KeyCode::Char(' '))
+                if self.focused_option != OptionFocus::Input =>
+            {
+                self.toggle_focused_option()
+            }
+            (KeyModifiers::CONTROL, KeyCode::Char('s')) => {
                 self.submit_message(app_state).await?;
                 return Ok(Some(ViewAction::SwitchToRead));
             }
-            _ => {
+            _ if self.focused_option == OptionFocus::Input => {
                 self.input.handle_event(event);
             }
+            _ => {}
         }
 
         Ok(None)
@@ -91,56 +167,26 @@ impl BaseElement for BodyElement {
         area: Rect,
         app_state: &AppState,
     ) -> Result<(), ApplicationError> {
-        let Mode::Write { reply_target } = &app_state.mode else {
+        let Mode::Write = app_state.mode else {
             return Ok(());
         };
 
         let container = Block::default().bg(BG);
         frame.render_widget(container, area);
 
-        let layout = Layout::vertical([Constraint::Min(0), Constraint::Max(3)]);
-        let [reply_area, input_area] = area.layout(&layout);
+        let [input_area, options_area] =
+            area.layout(&Layout::vertical([Constraint::Min(0), Constraint::Length(3)]));
 
-        let top_block = Block::bordered()
-            .fg(TEXT_DIM)
-            .border_type(BorderType::Rounded)
-            .title(format!(
-                "↩ replying to {} · posted at {}",
-                reply_target.handle,
-                reply_target.tweet.time.format("%Y-%m-%d %H:%M")
-            ));
-
-        let inner_top_block = top_block.inner(reply_area);
-
-        /*
-        3 here means - 1 for border T, 1 element, 1 border B
-        MAX(3) because if area is < 3 we dont want to underflow
-        we always extract 3 because that's the reserved space
-        */
-        let tweet_body_height = inner_top_block.height.max(3);
-
-        let inner_top_block_tweet_body = Paragraph::new(&*reply_target.tweet.body)
-            .wrap(Wrap { trim: true })
-            .scroll((self.scroll_tweet_body as u16, 0))
-            .fg(TEXT);
-
-        self.upper_scroll_limit_boundary = inner_top_block_tweet_body
-            .line_count(inner_top_block.width)
-            .saturating_sub(tweet_body_height as usize);
-
-        frame.render_widget(top_block, reply_area);
-        frame.render_widget(inner_top_block_tweet_body, inner_top_block);
-
-        /*
-        3 here means - 1 for border L, 1 cursor, 1 border R
-        MAX(3) because if area is < 3 we dont want to underflow
-        we always extract 3 because that's the reserved space
-        */
-        let input_width = area.width.max(3) - 3;
+        let input_width = input_area.width.max(3) - 3;
         let scroll = self.input.visual_scroll(input_width as usize);
+        let input_color = if self.focused_option == OptionFocus::Input {
+            PINK
+        } else {
+            TEXT_DIM
+        };
         let bottom_block = Paragraph::new(self.input.value())
             .scroll((0, scroll as u16))
-            .block(Block::bordered().fg(PINK));
+            .block(Block::bordered().title("New post").fg(input_color));
 
         /*
         `scroll` variable determines how much we need to scroll in respect to the whole width.
@@ -165,15 +211,20 @@ impl BaseElement for BodyElement {
          */
         let cursor_offset_x = self.input.visual_cursor().max(scroll) - scroll;
         frame.render_widget(bottom_block, input_area);
-        frame.set_cursor_position(Position::new(
-            input_area.x + cursor_offset_x as u16 + 1,
-            input_area.y + 1,
-        ));
+        if self.focused_option == OptionFocus::Input {
+            frame.set_cursor_position(Position::new(
+                input_area.x + cursor_offset_x as u16 + 1,
+                input_area.y + 1,
+            ));
+        }
+        self.draw_options(frame, options_area);
 
         Ok(())
     }
 
     fn reset(&mut self) {
         self.input.reset();
+        self.options = CreatePostOptions::default();
+        self.focused_option = OptionFocus::Input;
     }
 }

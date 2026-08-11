@@ -7,9 +7,27 @@ pub struct TweetIdRequest {
 }
 
 #[derive(Serialize)]
-pub struct QuotePostRequest {
+pub struct CreatePostRequest {
     pub text: String,
-    pub quote_tweet_id: String,
+    #[serde(flatten)]
+    pub options: CreatePostOptions,
+}
+
+#[derive(Debug, Clone, Copy, Serialize)]
+pub struct CreatePostOptions {
+    pub share_with_followers: bool,
+    pub paid_partnership: bool,
+    pub nullcast: bool,
+}
+
+impl Default for CreatePostOptions {
+    fn default() -> Self {
+        Self {
+            share_with_followers: true,
+            paid_partnership: false,
+            nullcast: false,
+        }
+    }
 }
 
 #[allow(dead_code)]

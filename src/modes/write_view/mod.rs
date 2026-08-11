@@ -16,9 +16,9 @@ impl WriteView {
         Self {
             elements: [
                 Box::new(HeaderElement::new(&app_state.user_info.username)),
-                Box::new(DividerElement::default()),
-                Box::new(BodyElement::new()),
-                Box::new(StatusBarElement::new()),
+                Box::new(DividerElement),
+                Box::new(BodyElement::default()),
+                Box::new(StatusBarElement),
                 Box::new(BottomBarElement::default()),
             ],
         }

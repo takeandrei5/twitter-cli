@@ -26,17 +26,14 @@ async fn main() -> Result<(), color_eyre::eyre::Error> {
     let auth_client = AuthClient::new()?;
     let (pkce_code_verifier, csrf_token) = auth_client.start_login();
 
-    let (code, state) = LocalClient::start_local_client()?;
+    let (code, state) = start_local_client().await?;
 
     let access_token = auth_client
         .handle_callback(pkce_code_verifier, code, state, &csrf_token)
         .await?;
 
     let twitter_client = TwitterClient::new(access_token);
-
     let app_state = AppState::new(twitter_client).await?;
-
-    // print!("\x1B[2J\x1B[1;1H"); // clean terminal
 
     let mut terminal = ratatui::init();
     let result = app(&mut terminal, app_state).await;
@@ -65,9 +62,9 @@ async fn app(
                     switch_mode(&mut app_state, &mut read_view, &mut write_view)
                 }
                 (KeyModifiers::CONTROL, KeyCode::Char('r')) => {
-                    refresh_tweets(&mut app_state, &mut read_view, &mut write_view).await?
+                    refresh_tweets(&mut app_state, &mut read_view).await?
                 }
-                (KeyModifiers::NONE, KeyCode::Char('q')) => return Ok(()),
+                (KeyModifiers::CONTROL, KeyCode::Char('x')) => return Ok(()),
                 _ => {
                     if let Some(action) = handle_view_key(
                         key,
@@ -87,29 +84,23 @@ async fn app(
 }
 
 fn switch_mode(app_state: &mut AppState, read_view: &mut ReadView, write_view: &mut WriteView) {
-    if let Some(next_mode) = match &app_state.mode {
-        Mode::Read => read_view
-            .prepare_for_state_change(app_state)
-            .map(|reply_target| Mode::Write { reply_target }),
-        Mode::Write { .. } => Some(Mode::Read),
-    } {
-        app_state.mode = next_mode;
-    }
+    app_state.mode = match app_state.mode {
+        Mode::Read => Mode::Write,
+        Mode::Write => Mode::Read,
+    };
 
     match &app_state.mode {
         Mode::Read => read_view.on_state_change(app_state),
-        Mode::Write { .. } => write_view.on_state_change(app_state),
+        Mode::Write => write_view.on_state_change(app_state),
     }
 }
 
 async fn refresh_tweets(
     app_state: &mut AppState,
     read_view: &mut ReadView,
-    write_view: &mut WriteView,
 ) -> Result<(), ApplicationError> {
     app_state.refresh_tweets().await?;
     read_view.reset();
-    write_view.reset();
 
     Ok(())
 }
@@ -123,7 +114,7 @@ async fn handle_view_key(
 ) -> Result<Option<ViewAction>, ApplicationError> {
     match app_state.mode {
         Mode::Read => read_view.handle_key_event(key, event, app_state).await,
-        Mode::Write { .. } => write_view.handle_key_event(key, event, app_state).await,
+        Mode::Write => write_view.handle_key_event(key, event, app_state).await,
     }
 }
 
@@ -146,6 +137,16 @@ fn render(
 ) -> Result<(), ApplicationError> {
     match app_state.mode {
         Mode::Read => read_view.render_view(frame, app_state),
-        Mode::Write { .. } => write_view.render_view(frame, app_state),
+        Mode::Write => write_view.render_view(frame, app_state),
     }
+}
+
+async fn start_local_client() -> Result<(String, String), ApplicationError> {
+    tokio::task::spawn_blocking(LocalClient::start_local_client)
+        .await
+        .map_err(|error| {
+            ApplicationError::UnexpectedError(std::io::Error::other(format!(
+                "Callback listener task failed: {error}"
+            )))
+        })?
 }

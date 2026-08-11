@@ -16,8 +16,8 @@ use crate::{
 const MORE_TEXT: &str = "...more info";
 
 #[derive(Debug, Clone)]
-pub struct TweetWidget {
-    tweet: Tweet,
+pub struct TweetWidget<'a> {
+    tweet: &'a Tweet,
     state: TweetState,
 }
 
@@ -36,8 +36,8 @@ impl TweetState {
     }
 }
 
-impl TweetWidget {
-    pub fn new(tweet: Tweet, state: TweetState) -> Self {
+impl<'a> TweetWidget<'a> {
+    pub fn new(tweet: &'a Tweet, state: TweetState) -> Self {
         Self { tweet, state }
     }
 
@@ -58,10 +58,10 @@ impl TweetWidget {
     }
 
     fn render_second_zone(&self, second_zone_area: Rect, buf: &mut Buffer) {
-        let cuttoff_point: usize = (second_zone_area.height * second_zone_area.width).into();
+        let cutoff_point: usize = (second_zone_area.height * second_zone_area.width).into();
 
-        let body: Cow<'_, str> = if self.tweet.body.len() > cuttoff_point {
-            let cutoff = cuttoff_point.saturating_sub(MORE_TEXT.len() + 2);
+        let body: Cow<'_, str> = if self.tweet.body.len() > cutoff_point {
+            let cutoff = cutoff_point.saturating_sub(MORE_TEXT.len() + 2);
 
             let trimmed = self
                 .tweet
@@ -101,7 +101,7 @@ impl TweetWidget {
     }
 }
 
-impl Widget for TweetWidget {
+impl Widget for TweetWidget<'_> {
     fn render(self, area: Rect, buf: &mut Buffer)
     where
         Self: Sized,

@@ -3,24 +3,10 @@ use crate::{
     utils::ApplicationError,
 };
 
-#[derive(Debug, Clone)]
-pub struct ReplyTarget {
-    pub tweet: Tweet,
-    pub handle: String,
-}
-
-impl PartialEq for ReplyTarget {
-    fn eq(&self, other: &Self) -> bool {
-        self.handle == other.handle && self.tweet.id == other.tweet.id
-    }
-}
-
-impl Eq for ReplyTarget {}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Mode {
     Read,
-    Write { reply_target: ReplyTarget },
+    Write,
 }
 
 pub enum ViewAction {
@@ -36,7 +22,7 @@ pub struct AppState {
 
 impl AppState {
     pub async fn new(twitter_client: TwitterClient) -> Result<Self, ApplicationError> {
-        let user_info = twitter_client.get_user_id().await?;
+        let user_info = twitter_client.get_current_user().await?;
         let tweets = twitter_client.fetch_posts(&user_info.id).await?;
 
         Ok(Self {

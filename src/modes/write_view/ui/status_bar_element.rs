@@ -24,15 +24,7 @@ const STATUS_TEXT: StatusText = StatusText {
     background_color: RED,
 };
 
-pub struct StatusBarElement {
-    _private: (),
-}
-
-impl StatusBarElement {
-    pub fn new() -> Self {
-        Self { _private: () }
-    }
-}
+pub struct StatusBarElement;
 
 impl BaseElement for StatusBarElement {
     fn draw(

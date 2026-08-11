@@ -5,7 +5,7 @@ use ratatui::{
 };
 
 use crate::{
-    app_state::{AppState, ReplyTarget, ViewAction},
+    app_state::{AppState, ViewAction},
     ui::BaseElement,
     utils::ApplicationError,
 };
@@ -23,7 +23,7 @@ pub trait View {
             Constraint::Length(1), // divider
             Constraint::Min(0),    // tweet list
             Constraint::Length(1), // status bar
-            Constraint::Length(1), // bottom bar
+            Constraint::Length(2), // bottom bar
         ]);
         let [
             header_area,
@@ -63,12 +63,6 @@ pub trait View {
         self.elements()
             .iter_mut()
             .for_each(|x| x.handle_state_change(app_state));
-    }
-
-    fn prepare_for_state_change(&mut self, app_state: &AppState) -> Option<ReplyTarget> {
-        self.elements()
-            .iter_mut()
-            .find_map(|x| x.handle_prepare_for_state_change(app_state))
     }
 
     fn reset(&mut self) {

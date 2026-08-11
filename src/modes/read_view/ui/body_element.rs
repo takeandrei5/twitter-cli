@@ -8,7 +8,8 @@ use ratatui::{
 };
 
 use crate::{
-    app_state::{AppState, ReplyTarget, ViewAction},
+    api::open_tweet,
+    app_state::{AppState, ViewAction},
     custom_widgets::{TweetState, TweetWidget},
     ui::BaseElement,
     utils::{ApplicationError, BG},
@@ -31,7 +32,7 @@ impl BodyElement {
     }
 
     fn clamp_list_index(&self, new_list_index: usize, max_len: usize) -> usize {
-        new_list_index.clamp(0, max_len)
+        new_list_index.clamp(0, max_len.saturating_sub(1))
     }
 
     async fn toggle_like(&mut self, app_state: &mut AppState) -> Result<(), ApplicationError> {
@@ -111,38 +112,25 @@ impl BodyElement {
 
     fn open_url(&self, app_state: &AppState) {
         if let Some(current_tweet) = app_state.tweets.get(self.current_list_index) {
-            let url = format!(
-                "https://x.com/{}/status/{}",
-                current_tweet.handle, current_tweet.id
-            );
-
-            let _ = webbrowser::open(&url).map_err(|error| {
+            if let Err(error) = open_tweet(current_tweet) {
                 tracing::debug!(
-                    "Could not open URL for tweet handle {} and tweet id {}. Error: {}",
-                    current_tweet.handle,
-                    current_tweet.id,
-                    error
-                )
-            });
+                    tweet_id = %current_tweet.id,
+                    error = %error,
+                    "Could not open tweet in browser"
+                );
+            }
         } else {
-            tracing::debug!("No tweets found.")
+            tracing::debug!(
+                current_index = self.current_list_index,
+                tweets_count = app_state.tweets.len(),
+                "Could not open tweet: no tweet at current index"
+            );
         }
     }
 }
 
 #[async_trait(?Send)]
 impl BaseElement for BodyElement {
-    fn handle_prepare_for_state_change(&mut self, app_state: &AppState) -> Option<ReplyTarget> {
-        if let Some(current_tweet) = app_state.tweets.get(self.current_list_index) {
-            return Some(ReplyTarget {
-                tweet: current_tweet.clone(),
-                handle: current_tweet.handle.clone(),
-            });
-        }
-
-        None
-    }
-
     async fn handle_key_event(
         &mut self,
         key: KeyEvent,
@@ -172,7 +160,6 @@ impl BaseElement for BodyElement {
         let widgets: Vec<TweetWidget> = app_state
             .tweets
             .iter()
-            .cloned()
             .map(|f| TweetWidget::new(f, TweetState::Normal))
             .collect();
 
