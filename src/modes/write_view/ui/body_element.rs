@@ -1,6 +1,6 @@
 use crate::{
     api::CreatePostOptions,
-    app_state::{AppState, Mode, ViewAction},
+    app_state::{AppState, Mode, StatusMessage, ViewAction},
     ui::BaseElement,
     utils::{ApplicationError, BG, BLUE, PINK, TEXT_DIM},
 };
@@ -65,13 +65,14 @@ impl BodyElement {
         }
     }
 
-    async fn submit_message(&mut self, app_state: &AppState) -> Result<(), ApplicationError> {
+    async fn submit_message(&mut self, app_state: &mut AppState) -> Result<(), ApplicationError> {
         if matches!(app_state.mode, Mode::Write) {
             app_state
                 .twitter_client
                 .create_post(self.input.value(), self.options)
                 .await?;
 
+            app_state.status_message = Some(StatusMessage::NewPostAdded);
             self.input.reset();
             self.options = CreatePostOptions::default();
             self.focused_option = OptionFocus::Input;
@@ -174,8 +175,10 @@ impl BaseElement for BodyElement {
         let container = Block::default().bg(BG);
         frame.render_widget(container, area);
 
-        let [input_area, options_area] =
-            area.layout(&Layout::vertical([Constraint::Min(0), Constraint::Length(3)]));
+        let [input_area, options_area] = area.layout(&Layout::vertical([
+            Constraint::Min(0),
+            Constraint::Length(3),
+        ]));
 
         let input_width = input_area.width.max(3) - 3;
         let scroll = self.input.visual_scroll(input_width as usize);

@@ -9,6 +9,14 @@ pub enum Mode {
     Write,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StatusMessage {
+    Liked,
+    Unliked,
+    Reposted,
+    NewPostAdded,
+}
+
 pub enum ViewAction {
     SwitchToRead,
 }
@@ -18,6 +26,7 @@ pub struct AppState {
     pub twitter_client: TwitterClient,
     pub tweets: Vec<Tweet>,
     pub user_info: UserInfo,
+    pub status_message: Option<StatusMessage>,
 }
 
 impl AppState {
@@ -30,6 +39,7 @@ impl AppState {
             twitter_client,
             tweets,
             user_info,
+            status_message: None,
         })
     }
 

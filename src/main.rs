@@ -59,7 +59,7 @@ async fn app(
         if let Event::Key(key) = read_event {
             match (key.modifiers, key.code) {
                 (KeyModifiers::CONTROL, KeyCode::Char('w')) => {
-                    switch_mode(&mut app_state, &mut read_view, &mut write_view)
+                    switch_mode(&mut app_state, &mut read_view, &mut write_view).await
                 }
                 (KeyModifiers::CONTROL, KeyCode::Char('r')) => {
                     refresh_tweets(&mut app_state, &mut read_view).await?
@@ -75,7 +75,8 @@ async fn app(
                     )
                     .await?
                     {
-                        handle_view_action(action, &mut app_state, &mut read_view, &mut write_view);
+                        handle_view_action(action, &mut app_state, &mut read_view, &mut write_view)
+                            .await;
                     }
                 }
             }
@@ -83,7 +84,11 @@ async fn app(
     }
 }
 
-fn switch_mode(app_state: &mut AppState, read_view: &mut ReadView, write_view: &mut WriteView) {
+async fn switch_mode(
+    app_state: &mut AppState,
+    read_view: &mut ReadView,
+    write_view: &mut WriteView,
+) {
     app_state.mode = match app_state.mode {
         Mode::Read => Mode::Write,
         Mode::Write => Mode::Read,
@@ -118,14 +123,14 @@ async fn handle_view_key(
     }
 }
 
-fn handle_view_action(
+async fn handle_view_action(
     action: ViewAction,
     app_state: &mut AppState,
     read_view: &mut ReadView,
     write_view: &mut WriteView,
 ) {
     match action {
-        ViewAction::SwitchToRead => switch_mode(app_state, read_view, write_view),
+        ViewAction::SwitchToRead => switch_mode(app_state, read_view, write_view).await,
     }
 }
 

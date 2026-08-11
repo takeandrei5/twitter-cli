@@ -9,7 +9,7 @@ use ratatui::{
 
 use crate::{
     api::open_tweet,
-    app_state::{AppState, ViewAction},
+    app_state::{AppState, StatusMessage, ViewAction},
     custom_widgets::{TweetState, TweetWidget},
     ui::BaseElement,
     utils::{ApplicationError, BG},
@@ -76,6 +76,12 @@ impl BodyElement {
             };
         }
 
+        app_state.status_message = Some(if was_liked {
+            StatusMessage::Unliked
+        } else {
+            StatusMessage::Liked
+        });
+
         Ok(())
     }
 
@@ -106,6 +112,8 @@ impl BodyElement {
         if let Some(tweet) = app_state.tweets.get_mut(self.current_list_index) {
             tweet.retweeted = true;
         }
+
+        app_state.status_message = Some(StatusMessage::Reposted);
 
         Ok(())
     }

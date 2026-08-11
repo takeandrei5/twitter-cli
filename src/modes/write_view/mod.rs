@@ -1,11 +1,11 @@
 use crate::{
     app_state::AppState,
     modes::view::View,
-    ui::{BaseElement, BottomBarElement, DividerElement, HeaderElement},
+    ui::{BaseElement, BottomBarElement, DividerElement, HeaderElement, StatusBarElement},
 };
 
 mod ui;
-use ui::{BodyElement, StatusBarElement};
+use ui::BodyElement;
 
 pub struct WriteView {
     elements: [Box<dyn BaseElement>; 5],
