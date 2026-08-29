@@ -1,0 +1,9 @@
+---
+source: src/modes/read_view/ui/custom_widgets/tweet_widget.rs
+expression: terminal.backend()
+---
+"test_name test_handl"
+"THIS IS A SUPER VERY"
+"LONG TEXT AND       "
+"CUTTOFF POI...more  "
+"↩100 ○retweeted ♡100"

@@ -5,19 +5,18 @@ use ratatui::{
 };
 
 use crate::{
-    app_state::{AppState, ViewAction},
+    state::{Action, ElementState},
     ui::BaseElement,
     utils::ApplicationError,
 };
 
-pub trait View {
-    fn elements(&mut self) -> &mut [Box<dyn BaseElement>; 5];
+pub trait View<T>
+where
+    T: ElementState,
+{
+    fn elements(&mut self) -> &mut [Box<dyn BaseElement<T>>; 5];
 
-    fn render_view(
-        &mut self,
-        frame: &mut Frame,
-        app_state: &AppState,
-    ) -> Result<(), ApplicationError> {
+    fn render_view(&mut self, frame: &mut Frame, state: &T) -> Result<(), ApplicationError> {
         let layout = Layout::vertical([
             Constraint::Length(1), // header
             Constraint::Length(1), // divider
@@ -35,11 +34,11 @@ pub trait View {
 
         let [header, divider, body, status_bar, bottom_bar] = self.elements();
 
-        header.draw(frame, header_area, app_state)?;
-        divider.draw(frame, divider_area, app_state)?;
-        body.draw(frame, body_area, app_state)?;
-        status_bar.draw(frame, status_bar_area, app_state)?;
-        bottom_bar.draw(frame, bottom_bar_area, app_state)?;
+        header.draw(frame, header_area, state)?;
+        divider.draw(frame, divider_area, state)?;
+        body.draw(frame, body_area, state)?;
+        status_bar.draw(frame, status_bar_area, state)?;
+        bottom_bar.draw(frame, bottom_bar_area, state)?;
 
         Ok(())
     }
@@ -48,21 +47,15 @@ pub trait View {
         &mut self,
         key: KeyEvent,
         event: &Event,
-        app_state: &mut AppState,
-    ) -> Result<Option<ViewAction>, ApplicationError> {
+        state: &T,
+    ) -> Result<Option<Action>, ApplicationError> {
         for element in self.elements() {
-            if let Some(action) = element.handle_key_event(key, event, app_state).await? {
+            if let Some(action) = element.handle_key_event(key, event, state).await? {
                 return Ok(Some(action));
             }
         }
 
         Ok(None)
-    }
-
-    fn on_state_change(&mut self, app_state: &AppState) {
-        self.elements()
-            .iter_mut()
-            .for_each(|x| x.handle_state_change(app_state));
     }
 
     fn reset(&mut self) {

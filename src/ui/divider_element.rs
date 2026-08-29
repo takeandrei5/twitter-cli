@@ -1,26 +1,29 @@
 use ratatui::{Frame, layout::Rect, style::Stylize, text::Text};
 
 use crate::{
-    app_state::{AppState, Mode},
+    state::{ElementState, Mode},
     ui::BaseElement,
-    utils::{ApplicationError, BLUE, TEXT_MUTE},
+    utils::{ApplicationError, BLUE, WHITE},
 };
 
-pub struct DividerElement;
+pub struct DividerElement {
+    mode: Mode,
+}
 
-impl BaseElement for DividerElement {
-    fn draw(
-        &mut self,
-        frame: &mut Frame,
-        area: Rect,
-        app_state: &AppState,
-    ) -> Result<(), ApplicationError> {
-        let widget_text = match app_state.mode {
+impl DividerElement {
+    pub fn new(mode: Mode) -> Self {
+        Self { mode }
+    }
+}
+
+impl<T: ElementState> BaseElement<T> for DividerElement {
+    fn draw(&mut self, frame: &mut Frame, area: Rect, _state: &T) -> Result<(), ApplicationError> {
+        let widget_text = match self.mode {
             Mode::Read => " ▸ Latest tweets",
             Mode::Write => " ▸ Whatcha cooking there? 👀",
         };
 
-        let widget = Text::from(widget_text).fg(TEXT_MUTE).bg(BLUE);
+        let widget = Text::from(widget_text).fg(WHITE).bg(BLUE);
 
         frame.render_widget(widget, area);
 

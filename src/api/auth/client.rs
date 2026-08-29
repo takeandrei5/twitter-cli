@@ -5,7 +5,7 @@ use oauth2::{
     reqwest::{ClientBuilder, redirect::Policy},
 };
 
-use crate::utils::ApplicationError;
+use crate::{api::auth::TwitterConfig, utils::ApplicationError};
 
 use super::TwitterOAuthClient;
 
@@ -14,18 +14,12 @@ pub struct AuthClient {
 }
 
 impl AuthClient {
-    pub fn new() -> Result<Self, ApplicationError> {
-        let client_id = dotenvy::var("TWITTER_CONSUMER_CLIENT_ID")?;
-        let client_secret = dotenvy::var("TWITTER_CONSUMER_SECRET")?;
-        let authorize_url = dotenvy::var("TWITTER_AUTHORIZE_URL")?;
-        let redirect_url = dotenvy::var("TWITTER_REDIRECT_URL")?;
-        let token_url = dotenvy::var("TWITTER_TOKEN_URL")?;
-
-        let client = BasicClient::new(ClientId::new(client_id))
-            .set_auth_uri(AuthUrl::new(authorize_url)?)
-            .set_client_secret(ClientSecret::new(client_secret))
-            .set_redirect_uri(RedirectUrl::new(redirect_url)?)
-            .set_token_uri(TokenUrl::new(token_url)?);
+    pub fn new(twitter_config: TwitterConfig) -> Result<Self, ApplicationError> {
+        let client = BasicClient::new(ClientId::new(twitter_config.client_id))
+            .set_auth_uri(AuthUrl::new(twitter_config.authorize_url)?)
+            .set_client_secret(ClientSecret::new(twitter_config.client_secret))
+            .set_redirect_uri(RedirectUrl::new(twitter_config.redirect_url)?)
+            .set_token_uri(TokenUrl::new(twitter_config.token_url)?);
 
         Ok(Self { client })
     }
@@ -38,14 +32,13 @@ impl AuthClient {
             .authorize_url(CsrfToken::new_random)
             .set_pkce_challenge(pkce_challenge);
 
-        const REQUIRED_SCOPES: [&str; 7] = [
+        const REQUIRED_SCOPES: [&str; 6] = [
             "tweet.read",
             "tweet.write",
             "users.read",
             "like.read",
             "like.write",
             "follows.read",
-            "offline.access",
         ];
 
         for scope in REQUIRED_SCOPES {
@@ -55,7 +48,7 @@ impl AuthClient {
 
         let (auth_url, csrf_token) = temp_authorization_request.url();
 
-        println!("Returned the following values - auth_url {}", auth_url);
+        println!("Click the following link for authentication {}", auth_url);
 
         (pkce_verifier, csrf_token)
     }
@@ -65,7 +58,7 @@ impl AuthClient {
         pkce_verifier: PkceCodeVerifier,
         code: String,
         state: String,
-        expected_csrf_token: &CsrfToken,
+        expected_csrf_token: CsrfToken,
     ) -> Result<String, ApplicationError> {
         if state != *expected_csrf_token.secret() {
             return Err(ApplicationError::CSRFTokenMismatch()); // adjust to your error type

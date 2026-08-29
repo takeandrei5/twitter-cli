@@ -13,7 +13,7 @@ pub struct CreatePostRequest {
     pub options: CreatePostOptions,
 }
 
-#[derive(Debug, Clone, Copy, Serialize)]
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
 pub struct CreatePostOptions {
     pub share_with_followers: bool,
     pub paid_partnership: bool,
@@ -28,12 +28,6 @@ impl Default for CreatePostOptions {
             nullcast: false,
         }
     }
-}
-
-#[allow(dead_code)]
-#[derive(Debug, Deserialize)]
-pub struct CreatePostResponse {
-    pub data: CreatedPost,
 }
 
 #[allow(dead_code)]
@@ -87,7 +81,7 @@ pub struct UserInfo {
 }
 
 #[allow(dead_code)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Tweet {
     pub id: String,
     pub name: String,

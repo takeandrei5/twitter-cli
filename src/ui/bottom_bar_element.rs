@@ -6,14 +6,14 @@ use ratatui::{
 };
 
 use crate::{
-    app_state::{AppState, Mode},
+    state::{ElementState, Mode},
     ui::BaseElement,
     utils::{ApplicationError, BORDER, SURFACE, TEXT_DIM, TEXT_MUTE},
 };
 
 const SHORTCUTS_READ_MODE: [(&str, &str); 7] = [
     ("j/k", "scroll"),
-    ("r", "repost"),
+    ("r", "retweet"),
     ("l", "like/unlike"),
     ("Ctrl+w", "new post"),
     ("Ctrl+r", "refresh data"),
@@ -30,6 +30,7 @@ const SHORTCUTS_WRITE_MODE: [(&str, &str); 5] = [
 ];
 
 pub struct BottomBarElement {
+    mode: Mode,
     read_line: (Line<'static>, Line<'static>),
     write_line: (Line<'static>, Line<'static>),
 }
@@ -37,8 +38,18 @@ pub struct BottomBarElement {
 impl Default for BottomBarElement {
     fn default() -> Self {
         Self {
+            mode: Mode::Read,
             read_line: Self::create_line(&SHORTCUTS_READ_MODE),
             write_line: Self::create_line(&SHORTCUTS_WRITE_MODE),
+        }
+    }
+}
+
+impl BottomBarElement {
+    pub fn for_mode(mode: Mode) -> Self {
+        Self {
+            mode,
+            ..Self::default()
         }
     }
 }
@@ -78,17 +89,12 @@ impl BottomBarElement {
     }
 }
 
-impl BaseElement for BottomBarElement {
-    fn draw(
-        &mut self,
-        frame: &mut Frame,
-        area: Rect,
-        app_state: &AppState,
-    ) -> Result<(), ApplicationError> {
+impl<T: ElementState> BaseElement<T> for BottomBarElement {
+    fn draw(&mut self, frame: &mut Frame, area: Rect, _state: &T) -> Result<(), ApplicationError> {
         let layout = Layout::vertical([Constraint::Fill(1), Constraint::Fill(1)]);
         let [line1_area, line2_area] = area.layout(&layout);
 
-        let shortcuts_to_draw = match app_state.mode {
+        let shortcuts_to_draw = match self.mode {
             Mode::Read => &self.read_line,
             Mode::Write => &self.write_line,
         };

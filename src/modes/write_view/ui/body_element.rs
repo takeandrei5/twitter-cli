@@ -1,6 +1,6 @@
 use crate::{
     api::CreatePostOptions,
-    app_state::{AppState, Mode, StatusMessage, ViewAction},
+    state::{Action, WriteState},
     ui::BaseElement,
     utils::{ApplicationError, BG, BLUE, PINK, TEXT_DIM},
 };
@@ -65,20 +65,11 @@ impl BodyElement {
         }
     }
 
-    async fn submit_message(&mut self, app_state: &mut AppState) -> Result<(), ApplicationError> {
-        if matches!(app_state.mode, Mode::Write) {
-            app_state
-                .twitter_client
-                .create_post(self.input.value(), self.options)
-                .await?;
-
-            app_state.status_message = Some(StatusMessage::NewPostAdded);
-            self.input.reset();
-            self.options = CreatePostOptions::default();
-            self.focused_option = OptionFocus::Input;
+    fn submit_action(&self) -> Action {
+        Action::CreatePost {
+            text: self.input.value().to_owned(),
+            options: self.options,
         }
-
-        Ok(())
     }
 
     fn draw_options(&self, frame: &mut Frame, area: Rect) {
@@ -122,21 +113,13 @@ impl BodyElement {
 }
 
 #[async_trait(?Send)]
-impl BaseElement for BodyElement {
-    fn handle_state_change(&mut self, app_state: &AppState) {
-        if matches!(app_state.mode, Mode::Write) {
-            self.input.reset();
-            self.options = CreatePostOptions::default();
-            self.focused_option = OptionFocus::Input;
-        }
-    }
-
+impl BaseElement<WriteState> for BodyElement {
     async fn handle_key_event(
         &mut self,
         key: KeyEvent,
         event: &Event,
-        app_state: &mut AppState,
-    ) -> Result<Option<ViewAction>, ApplicationError> {
+        _state: &WriteState,
+    ) -> Result<Option<Action>, ApplicationError> {
         match (key.modifiers, key.code) {
             (KeyModifiers::NONE, KeyCode::Tab) | (KeyModifiers::SHIFT, KeyCode::BackTab) => {
                 self.focus_next()
@@ -150,8 +133,7 @@ impl BaseElement for BodyElement {
                 self.toggle_focused_option()
             }
             (KeyModifiers::CONTROL, KeyCode::Char('s')) => {
-                self.submit_message(app_state).await?;
-                return Ok(Some(ViewAction::SwitchToRead));
+                return Ok(Some(self.submit_action()));
             }
             _ if self.focused_option == OptionFocus::Input => {
                 self.input.handle_event(event);
@@ -166,12 +148,8 @@ impl BaseElement for BodyElement {
         &mut self,
         frame: &mut Frame,
         area: Rect,
-        app_state: &AppState,
+        _state: &WriteState,
     ) -> Result<(), ApplicationError> {
-        let Mode::Write = app_state.mode else {
-            return Ok(());
-        };
-
         let container = Block::default().bg(BG);
         frame.render_widget(container, area);
 

@@ -1,32 +1,32 @@
 use crate::{
-    app_state::AppState,
     modes::view::View,
-    ui::{BaseElement, BottomBarElement, DividerElement, HeaderElement, StatusBarElement},
+    state::{Mode, ReadState},
+    ui::{BaseElement, BottomBarElement, DividerElement, HeaderElement},
 };
 
 mod ui;
-use ui::BodyElement;
+use ui::{BodyElement, StatusBarElement};
 
 pub struct ReadView {
-    elements: [Box<dyn BaseElement>; 5],
+    elements: [Box<dyn BaseElement<ReadState>>; 5],
 }
 
 impl ReadView {
-    pub fn new(app_state: &AppState) -> Self {
+    pub fn new(username: &str) -> Self {
         Self {
             elements: [
-                Box::new(HeaderElement::new(&app_state.user_info.username)),
-                Box::new(DividerElement),
+                Box::new(HeaderElement::new(username)),
+                Box::new(DividerElement::new(Mode::Read)),
                 Box::new(BodyElement::default()),
                 Box::new(StatusBarElement),
-                Box::new(BottomBarElement::default()),
+                Box::new(BottomBarElement::for_mode(Mode::Read)),
             ],
         }
     }
 }
 
-impl View for ReadView {
-    fn elements(&mut self) -> &mut [Box<dyn BaseElement>; 5] {
+impl View<ReadState> for ReadView {
+    fn elements(&mut self) -> &mut [Box<dyn BaseElement<ReadState>>; 5] {
         &mut self.elements
     }
 }

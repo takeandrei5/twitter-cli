@@ -1,0 +1,8 @@
+---
+source: src/modes/read_view/ui/status_bar_element.rs
+expression: result
+---
+Line::from_iter([
+    Span::from(" ↻ RETWEETED ").bold(),
+    Span::from(" Post retweeted "),
+]).fg(Color::Rgb(255, 255, 255)).bg(Color::Rgb(163, 113, 247)).left_aligned()

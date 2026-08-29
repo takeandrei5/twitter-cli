@@ -1,0 +1,26 @@
+---
+source: src/modes/write_view/ui/status_bar_element.rs
+expression: terminal.backend()
+---
+TestBackend {
+    buffer: Buffer {
+        area: Rect { x: 0, y: 0, width: 40, height: 2 },
+        content: [
+            " WRITE  insert text normally · Ctrl+W to",
+            "                                        ",
+        ],
+        styles: [
+            x: 0, y: 0, fg: Rgb(255, 255, 255), bg: Rgb(244, 33, 46), underline: Reset, modifier: BOLD,
+            x: 7, y: 0, fg: Rgb(255, 255, 255), bg: Rgb(244, 33, 46), underline: Reset, modifier: NONE,
+            x: 0, y: 1, fg: Reset, bg: Reset, underline: Reset, modifier: NONE,
+        ]
+    },
+    scrollback: Buffer {
+        area: Rect { x: 0, y: 0, width: 40, height: 0 }
+    },
+    cursor: false,
+    pos: (
+        0,
+        0,
+    ),
+}

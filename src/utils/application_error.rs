@@ -29,6 +29,18 @@ pub enum ApplicationError {
     #[error("Reqwest error. {0}")]
     ReqwestError(#[from] oauth2::reqwest::Error),
 
-    #[error("X API call request error. {0}")]
-    XApiCallError(String),
+    #[error("X API - bad request error. {0}")]
+    XApiBadRequestError(String),
+
+    #[error("X API - unauthorized error. {0}")]
+    XApiUnauthorizedError(String),
+
+    #[error("X API - forbidden error. {0}")]
+    XApiForbiddenError(String),
+
+    #[error("X API - resource not found error. {0}")]
+    XApiNotFoundError(String),
+
+    #[error("X API - unexpected request error. {0}")]
+    XApiUnexpectedError(String),
 }

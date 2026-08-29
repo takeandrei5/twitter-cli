@@ -1,0 +1,13 @@
+---
+source: src/modes/read_view/ui/custom_widgets/tweet_widget.rs
+expression: buffer
+---
+Buffer {
+    area: Rect { x: 0, y: 0, width: 40, height: 1 },
+    content: [
+        "test_body                               ",
+    ],
+    styles: [
+        x: 0, y: 0, fg: Rgb(255, 255, 255), bg: Reset, underline: Reset, modifier: NONE,
+    ]
+}

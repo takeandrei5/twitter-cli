@@ -3,29 +3,26 @@ use crossterm::event::{Event, KeyEvent};
 use ratatui::{Frame, layout::Rect};
 
 use crate::{
-    app_state::{AppState, ViewAction},
+    state::Action,
+    state::{AppState, ElementState},
     utils::ApplicationError,
 };
 
 #[async_trait(?Send)]
-pub trait BaseElement {
-    fn draw(
-        &mut self,
-        frame: &mut Frame,
-        area: Rect,
-        app_state: &AppState,
-    ) -> Result<(), ApplicationError>;
+pub trait BaseElement<T = AppState>
+where
+    T: ElementState,
+{
+    fn draw(&mut self, frame: &mut Frame, area: Rect, state: &T) -> Result<(), ApplicationError>;
 
     async fn handle_key_event(
         &mut self,
         _key: KeyEvent,
         _event: &Event,
-        _app_state: &mut AppState,
-    ) -> Result<Option<ViewAction>, ApplicationError> {
+        _state: &T,
+    ) -> Result<Option<Action>, ApplicationError> {
         Ok(None)
     }
-
-    fn handle_state_change(&mut self, _app_state: &AppState) {}
 
     fn reset(&mut self) {}
 }

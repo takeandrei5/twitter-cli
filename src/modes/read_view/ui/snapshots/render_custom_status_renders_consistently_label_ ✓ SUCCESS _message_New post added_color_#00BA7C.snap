@@ -1,0 +1,8 @@
+---
+source: src/modes/read_view/ui/status_bar_element.rs
+expression: result
+---
+Line::from_iter([
+    Span::from("  ✓ SUCCESS  ").bold(),
+    Span::from(" New post added "),
+]).fg(Color::Rgb(255, 255, 255)).bg(Color::Rgb(0, 186, 124)).left_aligned()

@@ -1,0 +1,15 @@
+---
+source: src/modes/read_view/ui/custom_widgets/tweet_widget.rs
+expression: buffer
+---
+Buffer {
+    area: Rect { x: 0, y: 0, width: 40, height: 1 },
+    content: [
+        "test_name test_handle                   ",
+    ],
+    styles: [
+        x: 0, y: 0, fg: Rgb(230, 237, 243), bg: Reset, underline: Reset, modifier: BOLD,
+        x: 9, y: 0, fg: Rgb(139, 148, 158), bg: Reset, underline: Reset, modifier: NONE,
+        x: 21, y: 0, fg: Reset, bg: Reset, underline: Reset, modifier: NONE,
+    ]
+}

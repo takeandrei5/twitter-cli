@@ -7,7 +7,7 @@ use ratatui::{
 };
 
 use crate::{
-    app_state::AppState,
+    state::ElementState,
     ui::BaseElement,
     utils::{ApplicationError, BLUE, SURFACE},
 };
@@ -30,13 +30,8 @@ impl HeaderElement {
     }
 }
 
-impl BaseElement for HeaderElement {
-    fn draw(
-        &mut self,
-        frame: &mut Frame,
-        area: Rect,
-        _app_state: &AppState,
-    ) -> Result<(), ApplicationError> {
+impl<T: ElementState> BaseElement<T> for HeaderElement {
+    fn draw(&mut self, frame: &mut Frame, area: Rect, _state: &T) -> Result<(), ApplicationError> {
         let layout = Layout::horizontal([Constraint::Fill(1); 2]);
         let [left_widget_area, right_widget_area] = area.layout(&layout);
 

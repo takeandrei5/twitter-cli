@@ -1,32 +1,32 @@
 use crate::{
-    app_state::AppState,
     modes::view::View,
-    ui::{BaseElement, BottomBarElement, DividerElement, HeaderElement, StatusBarElement},
+    state::{Mode, WriteState},
+    ui::{BaseElement, BottomBarElement, DividerElement, HeaderElement},
 };
 
 mod ui;
-use ui::BodyElement;
+use ui::{BodyElement, StatusBarElement};
 
 pub struct WriteView {
-    elements: [Box<dyn BaseElement>; 5],
+    elements: [Box<dyn BaseElement<WriteState>>; 5],
 }
 
 impl WriteView {
-    pub fn new(app_state: &AppState) -> Self {
+    pub fn new(username: &str) -> Self {
         Self {
             elements: [
-                Box::new(HeaderElement::new(&app_state.user_info.username)),
-                Box::new(DividerElement),
+                Box::new(HeaderElement::new(username)),
+                Box::new(DividerElement::new(Mode::Write)),
                 Box::new(BodyElement::default()),
                 Box::new(StatusBarElement),
-                Box::new(BottomBarElement::default()),
+                Box::new(BottomBarElement::for_mode(Mode::Write)),
             ],
         }
     }
 }
 
-impl View for WriteView {
-    fn elements(&mut self) -> &mut [Box<dyn BaseElement>; 5] {
+impl View<WriteState> for WriteView {
+    fn elements(&mut self) -> &mut [Box<dyn BaseElement<WriteState>>; 5] {
         &mut self.elements
     }
 }
