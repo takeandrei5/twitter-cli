@@ -135,7 +135,7 @@ mod tests {
     use ratatui::{Terminal, backend::TestBackend};
     use rstest::{fixture, rstest};
 
-    use crate::tests_utils::with_snapshot_insta_settings;
+    use crate::with_snapshot_settings;
 
     use super::*;
 
@@ -226,7 +226,7 @@ mod tests {
         tweet_widget.render_first_zone(area, &mut buffer);
 
         // Assert
-        with_snapshot_insta_settings(|| assert_debug_snapshot!(buffer));
+        with_snapshot_settings!({ assert_debug_snapshot!(buffer) });
     }
 
     #[rstest]
@@ -242,7 +242,7 @@ mod tests {
         tweet_widget.render_second_zone(area, &mut buffer);
 
         // Assert
-        with_snapshot_insta_settings(|| assert_debug_snapshot!(buffer));
+        with_snapshot_settings!({ assert_debug_snapshot!(buffer) });
     }
 
     #[rstest]
@@ -256,7 +256,7 @@ mod tests {
         tweet_widget.render_second_zone(area, &mut buffer);
 
         // Assert
-        with_snapshot_insta_settings(|| assert_debug_snapshot!(buffer));
+        with_snapshot_settings!({ assert_debug_snapshot!(buffer) });
     }
 
     #[rstest]
@@ -274,15 +274,16 @@ mod tests {
         long_tweet.retweeted = retweeted;
 
         let tweet_widget = TweetWidget::new(&long_tweet, TweetState::Normal);
-        let mut terminal = Terminal::new(TestBackend::new(20, 5)).unwrap();
+        let mut terminal =
+            Terminal::new(TestBackend::new(20, 5)).expect("test terminal should be created");
 
         // Act
         terminal
             .draw(|frame| frame.render_widget(tweet_widget, frame.area()))
-            .unwrap();
+            .expect("test terminal should be created");
 
         // Assert
-        with_snapshot_insta_settings(|| {
+        with_snapshot_settings!({
             assert_snapshot!(
                 format!(
                     "render_widget_should_render_consistently_on_small_screens_liked_{liked}_retweeted_{retweeted}"
@@ -307,15 +308,16 @@ mod tests {
         long_tweet.retweeted = retweeted;
 
         let tweet_widget = TweetWidget::new(&long_tweet, TweetState::Normal);
-        let mut terminal = Terminal::new(TestBackend::new(20, 10)).unwrap();
+        let mut terminal =
+            Terminal::new(TestBackend::new(20, 10)).expect("test terminal should be created");
 
         // Act
         terminal
             .draw(|frame| frame.render_widget(tweet_widget, frame.area()))
-            .unwrap();
+            .expect("test terminal should be created");
 
         // Assert
-        with_snapshot_insta_settings(|| {
+        with_snapshot_settings!({
             assert_snapshot!(
                 format!(
                     "render_widget_should_render_consistently_on_medium_screens_liked_{liked}_retweeted_{retweeted}"
@@ -340,15 +342,16 @@ mod tests {
         long_tweet.retweeted = retweeted;
 
         let tweet_widget = TweetWidget::new(&long_tweet, TweetState::Normal);
-        let mut terminal = Terminal::new(TestBackend::new(40, 10)).unwrap();
+        let mut terminal =
+            Terminal::new(TestBackend::new(40, 10)).expect("test terminal should be created");
 
         // Act
         terminal
             .draw(|frame| frame.render_widget(tweet_widget, frame.area()))
-            .unwrap();
+            .expect("test terminal should be created");
 
         // Assert
-        with_snapshot_insta_settings(|| {
+        with_snapshot_settings!({
             assert_snapshot!(
                 format!(
                     "render_widget_should_render_consistently_on_large_screens_liked_{liked}_retweeted_{retweeted}"

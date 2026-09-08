@@ -56,10 +56,9 @@ impl BodyElement {
     }
 
     fn open_action(&self, state: &ReadState) -> Option<Action> {
-        state
-            .tweet(self.current_list_index)
-            .cloned()
-            .map(Action::OpenTweet)
+        let tweet = state.tweet(self.current_list_index);
+
+        tweet.cloned().map(Action::OpenTweet)
     }
 
     fn calculate_visible_count_and_scroll_offset(&self, area: &Rect) -> (usize, usize) {
@@ -77,10 +76,11 @@ impl BodyElement {
         scroll_offset: usize,
         visible_count: usize,
     ) -> Vec<TweetWidget<'a>> {
-        let visible_widgets: Vec<TweetWidget> = (0..tweets.len())
-            .zip(tweets.iter())
+        let visible_widgets: Vec<TweetWidget> = tweets
+            .iter()
             .skip(scroll_offset)
             .take(visible_count)
+            .enumerate()
             .map(|(index, tweet)| {
                 if index == self.current_list_index {
                     TweetWidget::new(tweet, TweetState::Selected)
@@ -105,9 +105,11 @@ impl BodyElement {
         ])
         .split(area);
 
-        for (item, layout_area) in visible_widgets.into_iter().zip(layout.iter()) {
-            let inner = container.inner(*layout_area);
-            frame.render_widget(&container, *layout_area);
+        let zipped_tweet_area_widgets = visible_widgets.into_iter().zip(layout.iter().copied());
+
+        for (item, layout_area) in zipped_tweet_area_widgets {
+            let inner = container.inner(layout_area);
+            frame.render_widget(&container, layout_area);
             frame.render_widget(item, inner);
         }
     }
@@ -163,4 +165,3 @@ impl BaseElement<ReadState> for BodyElement {
         self.current_list_index = 0;
     }
 }
-

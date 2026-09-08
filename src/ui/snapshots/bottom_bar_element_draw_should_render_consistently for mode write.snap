@@ -1,0 +1,9 @@
+---
+source: src/ui/bottom_bar_element.rs
+expression: terminal.backend()
+---
+"  Tab  focus option "
+"                    "
+"                    "
+"  Ctrl+x  exit      "
+"                    "

@@ -57,12 +57,12 @@ impl BaseElement<WriteState> for StatusBarElement {
 
 #[cfg(test)]
 mod tests {
-    use crate::tests_utils::with_snapshot_insta_settings;
     use insta::assert_debug_snapshot;
     use ratatui::{Terminal, backend::TestBackend};
     use rstest::rstest;
 
     use super::*;
+    use crate::with_snapshot_settings;
 
     #[rstest]
     #[case(Some(StatusMessage::Liked))]
@@ -71,7 +71,9 @@ mod tests {
     #[case(Some(StatusMessage::AlreadyRetweeted))]
     #[case(Some(StatusMessage::NewPostAdded))]
     #[case(None)]
-    fn write_status_bar_element_draw_renders_consistently(#[case] status_message: Option<StatusMessage>) {
+    fn write_status_bar_element_draw_renders_consistently(
+        #[case] status_message: Option<StatusMessage>,
+    ) {
         // Arrange
         let mut terminal =
             Terminal::new(TestBackend::new(40, 2)).expect("test terminal should be created");
@@ -90,7 +92,7 @@ mod tests {
             .expect("test terminal should be created");
 
         // Assert
-        with_snapshot_insta_settings(|| {
+        with_snapshot_settings!({
             assert_debug_snapshot!(
                 format!("write_status_bar_element_draw_renders_consistently_{status_message:?}"),
                 terminal.backend()

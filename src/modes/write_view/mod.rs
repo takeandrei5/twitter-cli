@@ -19,7 +19,7 @@ impl WriteView {
                 Box::new(DividerElement::new(Mode::Write)),
                 Box::new(BodyElement::default()),
                 Box::new(StatusBarElement),
-                Box::new(BottomBarElement::for_mode(Mode::Write)),
+                Box::new(BottomBarElement::new(Mode::Write)),
             ],
         }
     }

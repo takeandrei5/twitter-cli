@@ -15,6 +15,7 @@ mod utils;
 async fn main() -> Result<(), color_eyre::eyre::Error> {
     tracing_subscriber::fmt().with_max_level(Level::INFO).init();
     color_eyre::install()?;
+    dotenvy::dotenv()?;
     let result = start_app().await;
 
     ratatui::restore();

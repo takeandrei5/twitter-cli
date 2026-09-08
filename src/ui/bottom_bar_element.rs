@@ -1,3 +1,5 @@
+use std::cmp::max;
+
 use ratatui::{
     Frame,
     layout::{Constraint, Layout, Rect},
@@ -29,80 +31,167 @@ const SHORTCUTS_WRITE_MODE: [(&str, &str); 5] = [
     ("Ctrl+x", "exit"),
 ];
 
+const ROW_LIMIT: usize = 4;
+
 pub struct BottomBarElement {
-    mode: Mode,
-    read_line: (Line<'static>, Line<'static>),
-    write_line: (Line<'static>, Line<'static>),
-}
-
-impl Default for BottomBarElement {
-    fn default() -> Self {
-        Self {
-            mode: Mode::Read,
-            read_line: Self::create_line(&SHORTCUTS_READ_MODE),
-            write_line: Self::create_line(&SHORTCUTS_WRITE_MODE),
-        }
-    }
+    lines: Vec<Line<'static>>,
 }
 
 impl BottomBarElement {
-    pub fn for_mode(mode: Mode) -> Self {
-        Self {
-            mode,
-            ..Self::default()
-        }
+    pub fn new(mode: Mode) -> Self {
+        let lines = match mode {
+            Mode::Read => Self::create_lines(&SHORTCUTS_READ_MODE),
+            Mode::Write => Self::create_lines(&SHORTCUTS_WRITE_MODE),
+        };
+
+        Self { lines }
     }
-}
 
-impl BottomBarElement {
-    fn create_line(shortcuts: &[(&str, &str)]) -> (Line<'static>, Line<'static>) {
-        let mut spans: Vec<(Span<'_>, Span<'_>)> = vec![];
-        //  = vec![Span::raw(" ")]
-        for &(key, action) in shortcuts {
-            let new_item = (
-                Span::styled(
-                    format!(" {key} "),
-                    Style::default().fg(TEXT_DIM).bg(BORDER).bold(),
-                ),
-                Span::styled(format!(" {action} "), Style::default().fg(TEXT_MUTE)),
-            );
+    fn create_spans_from_chunk(chunk: &[(&str, &str)]) -> Vec<Span<'static>> {
+        let mut spans: Vec<Span<'static>> = Vec::with_capacity(1 + chunk.len() * 2);
+        spans.push(Span::raw(" "));
 
-            spans.push(new_item);
+        for &(key, action) in chunk {
+            spans.push(Span::styled(
+                format!(" {key} "),
+                Style::default().fg(TEXT_DIM).bg(BORDER).bold(),
+            ));
+
+            spans.push(Span::styled(
+                format!(" {action} "),
+                Style::default().fg(TEXT_MUTE),
+            ));
         }
 
-        let mut line1 = spans
-            .drain(..4)
-            .flat_map(|f| [f.0, f.1])
-            .collect::<Vec<Span<'_>>>();
-        let mut line2 = spans
-            .into_iter()
-            .flat_map(|f| [f.0, f.1])
-            .collect::<Vec<Span<'_>>>();
+        spans
+    }
 
-        line1.insert(0, Span::raw(" "));
-        line2.insert(0, Span::raw(" "));
+    fn create_lines(shortcuts: &[(&str, &str)]) -> Vec<Line<'static>> {
+        shortcuts
+            .chunks(ROW_LIMIT)
+            .map(|chunk| {
+                let spans: Vec<Span<'static>> = Self::create_spans_from_chunk(chunk);
 
-        (
-            Line::from(line1).left_aligned().bg(SURFACE),
-            Line::from(line2).left_aligned().bg(SURFACE),
-        )
+                Line::from(spans).left_aligned().bg(SURFACE)
+            })
+            .collect()
     }
 }
 
 impl<T: ElementState> BaseElement<T> for BottomBarElement {
     fn draw(&mut self, frame: &mut Frame, area: Rect, _state: &T) -> Result<(), ApplicationError> {
-        let layout = Layout::vertical([Constraint::Fill(1), Constraint::Fill(1)]);
-        let [line1_area, line2_area] = area.layout(&layout);
+        let lines_count =
+            max(SHORTCUTS_READ_MODE.len(), SHORTCUTS_WRITE_MODE.len()).div_ceil(ROW_LIMIT);
+        let layout = Layout::vertical(vec![Constraint::Fill(1); lines_count]);
+        let line_areas: [Rect; 2] = area.layout(&layout);
 
-        let shortcuts_to_draw = match self.mode {
-            Mode::Read => &self.read_line,
-            Mode::Write => &self.write_line,
-        };
-
-        let (widget1, widget2) = shortcuts_to_draw;
-        frame.render_widget(widget1, line1_area);
-        frame.render_widget(widget2, line2_area);
+        for (line, line_area) in self.lines.iter().zip(line_areas.iter()) {
+            frame.render_widget(line, *line_area);
+        }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use insta::assert_snapshot;
+    use ratatui::Terminal;
+    use ratatui::backend::TestBackend;
+    use ratatui::style::{Style, Stylize};
+    use ratatui::text::{Line, Span};
+    use rstest::rstest;
+
+    use crate::state::{Mode, ReadState};
+    use crate::ui::bottom_bar_element::SHORTCUTS_READ_MODE;
+    use crate::ui::{BaseElement, BottomBarElement};
+    use crate::utils::{BORDER, SURFACE, TEXT_DIM, TEXT_MUTE};
+    use crate::with_snapshot_settings;
+
+    #[test]
+    fn create_spans_from_chunk_should_create_correct_spans() {
+        // Arrange
+        let chunks: Vec<(&str, &str)> = SHORTCUTS_READ_MODE.into_iter().take(4).collect();
+        let expected_result: Vec<Span<'_>> = vec![
+            Span::raw(" "),
+            Span::styled(" j/k ", Style::default().fg(TEXT_DIM).bg(BORDER).bold()),
+            Span::styled(" scroll ", Style::default().fg(TEXT_MUTE)),
+            Span::styled(" r ", Style::default().fg(TEXT_DIM).bg(BORDER).bold()),
+            Span::styled(" retweet ", Style::default().fg(TEXT_MUTE)),
+            Span::styled(" l ", Style::default().fg(TEXT_DIM).bg(BORDER).bold()),
+            Span::styled(" like/unlike ", Style::default().fg(TEXT_MUTE)),
+            Span::styled(" Ctrl+w ", Style::default().fg(TEXT_DIM).bg(BORDER).bold()),
+            Span::styled(" new post ", Style::default().fg(TEXT_MUTE)),
+        ];
+
+        // Act
+        let result = BottomBarElement::create_spans_from_chunk(chunks.as_slice());
+
+        // Assert
+        assert_eq!(result, expected_result);
+    }
+
+    #[test]
+    fn create_lines_should_correct_lines() {
+        // Arrange
+        let first_spans: Vec<Span<'_>> = vec![
+            Span::raw(" "),
+            Span::styled(" j/k ", Style::default().fg(TEXT_DIM).bg(BORDER).bold()),
+            Span::styled(" scroll ", Style::default().fg(TEXT_MUTE)),
+            Span::styled(" r ", Style::default().fg(TEXT_DIM).bg(BORDER).bold()),
+            Span::styled(" retweet ", Style::default().fg(TEXT_MUTE)),
+            Span::styled(" l ", Style::default().fg(TEXT_DIM).bg(BORDER).bold()),
+            Span::styled(" like/unlike ", Style::default().fg(TEXT_MUTE)),
+            Span::styled(" Ctrl+w ", Style::default().fg(TEXT_DIM).bg(BORDER).bold()),
+            Span::styled(" new post ", Style::default().fg(TEXT_MUTE)),
+        ];
+
+        let second_spans: Vec<Span<'_>> = vec![
+            Span::raw(" "),
+            Span::styled(" Ctrl+r ", Style::default().fg(TEXT_DIM).bg(BORDER).bold()),
+            Span::styled(" refresh data ", Style::default().fg(TEXT_MUTE)),
+            Span::styled(" o ", Style::default().fg(TEXT_DIM).bg(BORDER).bold()),
+            Span::styled(" open ", Style::default().fg(TEXT_MUTE)),
+            Span::styled(" Ctrl+x ", Style::default().fg(TEXT_DIM).bg(BORDER).bold()),
+            Span::styled(" exit ", Style::default().fg(TEXT_MUTE)),
+        ];
+        let expected_result = [
+            Line::from(first_spans).left_aligned().bg(SURFACE),
+            Line::from(second_spans).left_aligned().bg(SURFACE),
+        ];
+
+        // Act
+        let result = BottomBarElement::create_lines(&SHORTCUTS_READ_MODE);
+
+        // Assert
+        assert_eq!(result, expected_result);
+    }
+
+    #[rstest]
+    #[case(Mode::Write)]
+    #[case(Mode::Read)]
+    fn draw_should_render_consistently(#[case] mode: Mode) {
+        // Arrange
+        let mut sut = BottomBarElement::new(mode);
+        let read_state = ReadState::new(vec![]);
+
+        let mut terminal =
+            Terminal::new(TestBackend::new(20, 5)).expect("test terminal should be created");
+
+        // Act
+        terminal
+            .draw(|frame| {
+                sut.draw(frame, frame.area(), &read_state)
+                    .expect("test terminal should be created")
+            })
+            .expect("test terminal should be created");
+
+        // Assert
+        with_snapshot_settings!({
+            assert_snapshot!(
+                format!("bottom_bar_element_draw_should_render_consistently for mode {mode}"),
+                terminal.backend()
+            );
+        });
     }
 }

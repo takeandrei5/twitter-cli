@@ -19,7 +19,7 @@ impl ReadView {
                 Box::new(DividerElement::new(Mode::Read)),
                 Box::new(BodyElement::default()),
                 Box::new(StatusBarElement),
-                Box::new(BottomBarElement::for_mode(Mode::Read)),
+                Box::new(BottomBarElement::new(Mode::Read)),
             ],
         }
     }

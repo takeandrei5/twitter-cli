@@ -79,7 +79,7 @@ mod tests {
     use ratatui::{Terminal, backend::TestBackend};
     use rstest::rstest;
 
-    use crate::tests_utils::with_snapshot_insta_settings;
+    use crate::with_snapshot_settings;
 
     use super::*;
 
@@ -116,7 +116,7 @@ mod tests {
         let result = StatusBarElement::render_default_status(tweet_count);
 
         // Assert
-        with_snapshot_insta_settings(|| {
+        with_snapshot_settings!({
             assert_debug_snapshot!(result);
         });
     }
@@ -136,7 +136,7 @@ mod tests {
         let result = StatusBarElement::render_custom_status((label, message, color));
 
         // Assert
-        with_snapshot_insta_settings(|| {
+        with_snapshot_settings!({
             assert_debug_snapshot!(
                 format!(
                     "render_custom_status_renders_consistently_label_{label}_message_{message}_color_{color}"
@@ -165,7 +165,6 @@ mod tests {
 
         // Act
         terminal
-            // .draw(|frame| frame.render_widget(status_bar_element_widget, frame.area()))
             .draw(|frame| {
                 status_bar_element_widget
                     .draw(frame, frame.area(), &read_state)
@@ -174,7 +173,7 @@ mod tests {
             .expect("test terminal should be created");
 
         // Assert
-        with_snapshot_insta_settings(|| {
+        with_snapshot_settings!({
             assert_debug_snapshot!(
                 format!(
                     "read_status_bar_element_draw_renders_consistently_status_message_{status_message:?}"

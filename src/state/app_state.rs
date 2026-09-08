@@ -10,6 +10,17 @@ pub enum Mode {
     Write,
 }
 
+impl std::fmt::Display for Mode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let text = match self {
+            Mode::Read => "read",
+            Mode::Write => "write",
+        };
+
+        write!(f, "{}", text)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StatusMessage {
     Liked,
@@ -213,5 +224,117 @@ impl AppState {
 
         self.show_status_message(StatusMessage::Retweeted);
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn app_state() -> AppState {
+        let (event_sender, event_receiver) = tokio::sync::mpsc::unbounded_channel();
+
+        AppState {
+            mode: Mode::Read,
+            twitter_client: TwitterClient::new(String::from("test-token"), None),
+            user_info: UserInfo {
+                id: String::from("test-user-id"),
+                username: String::from("test-user"),
+            },
+            read_state: ReadState::new(vec![]),
+            write_state: WriteState::default(),
+            event_sender,
+            event_receiver,
+        }
+    }
+
+    #[test]
+    fn toggle_mode_should_switch_between_read_and_write() {
+        // Arrange
+        let mut sut = app_state();
+
+        // Act
+        sut.toggle_mode();
+        let mode_after_first_toggle = *sut.mode();
+
+        sut.toggle_mode();
+        let mode_after_second_toggle = *sut.mode();
+
+        // Assert
+        assert_eq!(mode_after_first_toggle, Mode::Write);
+        assert_eq!(mode_after_second_toggle, Mode::Read);
+    }
+
+    #[test]
+    fn mode_should_return_the_expected_mode() {
+        // Arrange
+        let sut = app_state();
+
+        // Act
+        let mode = sut.mode();
+
+        // Assert
+        assert_eq!(mode, &Mode::Read);
+    }
+
+    #[test]
+    fn user_id_should_return_the_expected_user_id() {
+        // Arrange
+        let sut = app_state();
+
+        // Act
+        let user_id = sut.user_id();
+
+        // Assert
+        assert_eq!(user_id, "test-user-id");
+    }
+
+    #[test]
+    fn username_should_return_the_expected_username() {
+        // Arrange
+        let sut = app_state();
+
+        // Act
+        let username = sut.username();
+
+        // Assert
+        assert_eq!(username, "test-user");
+    }
+
+    #[test]
+    fn read_state_should_return_the_expected_read_state() {
+        // Arrange
+        let sut = app_state();
+
+        // Act
+        let read_state = sut.read_state();
+
+        // Assert
+        assert_eq!(*read_state, sut.read_state);
+    }
+
+    #[test]
+    fn write_state_should_return_the_expected_write_state() {
+        // Arrange
+        let sut = app_state();
+
+        // Act
+        let write_state = sut.write_state();
+
+        // Assert
+        assert_eq!(*write_state, sut.write_state);
+    }
+
+    #[test]
+    fn show_status_message_should_update_read_and_write_states() {
+        // Arrange
+        let mut sut = app_state();
+
+        // Act
+        sut.show_status_message(StatusMessage::Liked);
+
+        // Assert
+        assert_eq!(sut.read_state.status_message(), Some(&StatusMessage::Liked));
+        assert_eq!(sut.write_state.status_message(), Some(&StatusMessage::Liked));
     }
 }

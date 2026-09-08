@@ -108,6 +108,4 @@ mod tests {
         // Assert
         assert_eq!(call_count, 1);
     }
-
-    
 }

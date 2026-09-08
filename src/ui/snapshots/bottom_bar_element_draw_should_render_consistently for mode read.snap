@@ -1,0 +1,9 @@
+---
+source: src/ui/bottom_bar_element.rs
+expression: terminal.backend()
+---
+"  j/k  scroll  r  re"
+"                    "
+"                    "
+"  Ctrl+r  refresh da"
+"                    "

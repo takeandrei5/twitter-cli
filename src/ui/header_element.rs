@@ -42,3 +42,40 @@ impl<T: ElementState> BaseElement<T> for HeaderElement {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use insta::assert_snapshot;
+    use ratatui::{Terminal, backend::TestBackend};
+
+    use crate::state::ReadState;
+    use crate::ui::BaseElement;
+    use crate::ui::HeaderElement;
+    use crate::with_snapshot_settings;
+
+    #[test]
+    fn draw_should_render_consistently() {
+        // Arrange
+        let mut sut = HeaderElement::new("Soup is good");
+        let read_state = ReadState::new(vec![]);
+
+        let mut terminal =
+            Terminal::new(TestBackend::new(20, 5)).expect("test terminal should be created");
+
+        // Act
+        terminal
+            .draw(|frame| {
+                sut.draw(frame, frame.area(), &read_state)
+                    .expect("test terminal should be created")
+            })
+            .expect("test terminal should be created");
+
+        // Assert
+        with_snapshot_settings!({
+            assert_snapshot!(
+                format!("header_element_draw_should_render_consistently"),
+                terminal.backend()
+            );
+        });
+    }
+}

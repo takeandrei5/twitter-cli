@@ -1,4 +1,3 @@
-
 use crate::state::{AppState, ReadState, WriteState};
 
 pub trait ElementState {

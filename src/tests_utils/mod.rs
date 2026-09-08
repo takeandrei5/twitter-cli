@@ -1,7 +1,10 @@
-use insta::Settings;
+#[macro_export]
+macro_rules! with_snapshot_settings {
+    ($assertion:block) => {
+        use insta::Settings;
 
-pub(crate) fn with_snapshot_insta_settings(assertion: impl FnOnce()) {
-    let mut settings: Settings = Settings::clone_current();
-    settings.set_prepend_module_to_snapshot(false);
-    settings.bind(assertion);
+        let mut settings: Settings = Settings::clone_current();
+        settings.set_prepend_module_to_snapshot(false);
+        settings.bind(|| $assertion);
+    };
 }
